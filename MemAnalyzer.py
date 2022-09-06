@@ -117,9 +117,10 @@
 import math
 
 from tabulate import tabulate
-from Tools.scripts.finddiv import process
-from test.test_unparse import try_except_finally
-from _ast import If
+import sys
+#from Tools.scripts.finddiv import process
+#from test.test_unparse import try_except_finally
+#from _ast import If
 
 
 
@@ -334,14 +335,14 @@ def slab(slab_start_line, lines, end_of_block,outputfile):
                     elements = elements + 1 
 
         except:
-            print("jump")        
+            print("jump! slab")        
 
         
     
     #elements = elements - 2 #time and I,OWA,... lines
     offset = offset -1
-    print("elements " +str(elements))
-    print("offset " +str(offset))
+    #print("elements " +str(elements))
+    #print("offset " +str(offset))
 
 
     data = []
@@ -381,13 +382,13 @@ def slab(slab_start_line, lines, end_of_block,outputfile):
             data[i][17] = int(int(data[i][2])/elem_page * 4096)           
 
     
-    print("len data " + str(len(data)))
+    #print("len data " + str(len(data)))
     
     data_tuple = []
     for i in range(elements):
         data_tuple.append((i,data[i][16]))
     
-    print(data_tuple)
+    #print(data_tuple)
     
     data_sorted = sorted(data_tuple, key=lambda x: int(x[1]))
     data_sorted.reverse()
@@ -973,13 +974,9 @@ def find_blocks(filename):
         
         
 
-    print(general_system_lines)
-    
-    print(sys_top_lines)     
-    print(lines[sys_top_lines[0]])
- 
-
-    outputfile = open("output.txt","w") 
+    output_file_split = filename[:len(filename)-4]
+    output_file_name = "output_" + output_file_split + ".txt" 
+    outputfile = open(output_file_name,"w") 
     
 
     if len(general_system_lines)>0:
@@ -1082,16 +1079,13 @@ def find_blocks(filename):
    
    
    
-
-#find_blocks("exec.tac.report.2022.08.22.txt")
-#find_blocks("innoFTG-2022-08-12-logs-part1.txt")
-find_blocks("7527339_FG101FTK19002976_debug_(5).log")
-
-
-#find_blocks("hrv1-fw-p001-fgt(1).txt")
-#find_blocks("TAC_Logs_7510751.txt")
+if __name__ == "__main__":
+    print(f"Arguments count: {len(sys.argv)}")
+    for i, arg in enumerate(sys.argv):
+        print(f"Argument {i:>6}: {arg}")
 
 
-#find_blocks("afterconserve.txt")
-#find_blocks("FGT60E4Q16001519_debug.log")
+
+    find_blocks(sys.argv[1])
+
 
