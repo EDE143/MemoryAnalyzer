@@ -99,16 +99,6 @@
 
 
 
-#conserve mode
-# Hardcode muss da raus, da passt nix
-#BUG Conserve mode multiple copies of the same column
-#Conserve mode: datenschrott in den ersten 2-3 Zeilen
-
-#: 2022-08-17 10:17:49 green="1572 MB" msg="Kernel enters memory conserve mode"
-#188: 2020-09-09 08:19:14 logdesc="Memory conserve mode entered" service=kernel conserve=on total="1506 
-
-
-
 
 ######################################
 
