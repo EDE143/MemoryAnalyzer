@@ -65,28 +65,28 @@
 #meminfo slab
 #object size * #available objects -> Sortieren.
 #einfach die ganze tabelle kopieren und ganz rechts diese zeile anfügen und danach sortieren.
-#Das offizielle Material sieht anders aus. FOS_CPU_memory 2019, S.11
+#Das offizielle Material sieht anders aus. Interna, S.11
 #Uni Hannover S.55 -> Am Ende werden Pages reserviert. Es sei denn Fortinet hat den next level Scheiß am start.
 
 #offset stimmt nicht in TAC_Logs_7510751 wird nicht die erste zeile gelesen
 
 #File descriptors leak
-#FOS S.33
+#interna S.33
 
-#Optimizations, Vergleich zu den default werten. FOS S.36++
+#Optimizations, Vergleich zu den default werten. interna S.36++
 
-#IPS DEBUGGER, FOS S.40++
+#IPS DEBUGGER, interna S.40++
 #diag ips packet status -> #Packete die während conserve mode gedroppt worden sind.
 
 
 
-#WAD DEBUGGER, FOS S.44
+#WAD DEBUGGER, interna S.44
 # diagnose wad memory sum -> da gibts noch andere befehle diese tabelle auszulesen. welche? ab in die find_blocks()
 #umrechnen der byes in megatbyte zum besseren auslesen.
 
 
 #CPU und Interrupts
-#FOS S.63
+#interna S.63
 
 #Idee: Vorschläge ausgeben lassen. Beispiel: hoher cached wert und bei miglogd mem und disk erkannt -> abstellen
 #vllt eine art abgleich von symptomen und gelösten tickets. 
@@ -118,6 +118,8 @@ import math
 
 from tabulate import tabulate
 import sys
+from pip._vendor.progress.colors import red
+from _ast import If
 #from Tools.scripts.finddiv import process
 #from test.test_unparse import try_except_finally
 #from _ast import If
@@ -183,16 +185,18 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
                     continue
                     
             if len(tokens)>0 and block_found == 1:
-                data[j][0] = tokens[0]
-                data[j][1] = tokens[1]
-                data[j][2] = tokens[2]
-                data[j][3] = tokens[3]
-                data[j][4] = tokens[4]
-                data[j][5] = tokens[5]
-                data[j][6] = tokens[6]
-                data[j][7] = tokens[7]
-                data[j][8] = tokens[8]
-                data[j][9] = tokens[9]
+                data[j][0] = tokens[0]                  #id
+                data[j][1] = tokens[1]                  #allocs
+                data[j][2] = tokens[2]                  #frees
+                data[j][3] = tokens[3]                  #reallocs
+                data[j][4] = tokens[4]                  #avg_size
+                data[j][5] = tokens[5]                  #in_str
+                data[j][6] = tokens[6]                  #active
+                data[j][7] = tokens[7]                  #bytes
+                data[j][8] = tokens[8]                  #max
+                data[j][9] = tokens[9]                  #cmem object name
+                
+                #check for obvious memory leak
                 if int(tokens[7]) < 0 or int(tokens[8]) < 0:
                     leak = tokens[9]
             j = j+1                        
@@ -209,11 +213,11 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
             tuples.append((i,data[i][7]))
 
 
-
+    #sort tuples
     data_sorted = sorted(tuples, key=lambda x: int(x[1]))
     data_sorted.reverse()
     
-    
+    #recreate the sorted data table
     data_sorted_table = []
     for i in range(elements-1):
         index = data_sorted[i][0]
@@ -258,7 +262,7 @@ def miglogd(mig_start_line, lines, end_of_block,outputfile):
                 if "mem" in tokens[0]:
                         
                         outputfile.write("\n")    
-                        outputfile.write(lines[mig_start_line[0]+i])
+                        outputfile.write(lines[mig_start_line[0]+i]) 
                         outputfile.write("\n")   
                         outputfile.write("\n")         
                                                 
@@ -399,11 +403,6 @@ def slab(slab_start_line, lines, end_of_block,outputfile):
         index = data_sorted[i][0]
         data_sorted_table.append(data[index])    
     
-    #print(data_sorted_table)
-    
-    #sorted_data = sorted(data, key=lambda d: int(data[16]))
-    
-    #print(tabulate(data_sorted_table,headers=head,tablefmt="grid"))
 
 
     outputfile.write("TOP SLAB USAGE")
@@ -555,14 +554,8 @@ def shm(shm_occurances, lines, end_of_block, outputfile):
 
 def tmp(tmp_occurances, lines, end_of_block,outputfile):
     print("CALCULATING USAGE OF /DEV/TMP")
-    #print(lines[tmp_occurances[0]].split())
-    #print("start_of_block: " + str(tmp_occurances[0]))
-    #print("end_of_block: " + str(end_of_block))
-    #print(lines[end_of_block])    
-    #print(end_of_block-tmp_occurances[0])
 
-    #ende bei 1320
-    #1504
+
     tmp_tuples = []
     #name im letzten token
     #größe im vorletzten token
@@ -620,14 +613,6 @@ def tmp(tmp_occurances, lines, end_of_block,outputfile):
 
 def cmdb(cmdb_occurances, lines, end_of_block,outputfile):
     print("CALCULATING USAGE OF /DEV/CMDB")
-    print(lines[cmdb_occurances[0]].split())
-    print("start_of_block: " + str(cmdb_occurances[0]))
-    print("end_of_block: " + str(end_of_block))
-    print(lines[end_of_block])    
-    print(end_of_block-cmdb_occurances[0])
-
-
-
 
 
     cmdb_tuples = []
@@ -682,11 +667,13 @@ def cmdb(cmdb_occurances, lines, end_of_block,outputfile):
     outputfile.write("\n")  
     outputfile.write("\n")      
 
+
+
 def sys_top(blocks, lines, end_of_block,outputfile):
     print("SYS TOP / SYS TOP ALL")
 
     elements = 0
-    head = ["Name, ProcessID"]   
+    head = ["Name"]   
     Iteration = 1
     current_block = []
     for i in range(end_of_block-blocks):    
@@ -704,7 +691,7 @@ def sys_top(blocks, lines, end_of_block,outputfile):
             print("jump! sys top")
     processes = []
     
-    elements = elements - 2 #time and I,OWA,... lines
+    elements = elements - 1
     print("elements " +str(elements))
     print("Iterations:" + str(Iteration))
     print(head)
@@ -827,48 +814,79 @@ def general_system_information(gen_start_line, lines, end_of_block,outputfile):
 def conserve(block, lines, end_of_block, outputfile):
     print("CONSERVE MODE ENTERED")
     
-
-    #elements = 0
+    
     head = ["Name, ProcessID"]   
-    Iteration = 1
     current_block = []
+    elements = 0        #elements in block
+    start = 0           #block is starting
+    red = 0             #conserve mode consistency red threshold
+    used = 1           #conserve mode consistency used total memory
     for i in range(end_of_block-block):    
         tokens = lines[block+i].split()
-        #print(tokens)
+
         try: 
             if len(tokens)>0:
                 #print(tokens)
-                #elements = elements + 1 
+                if tokens[3] == "MemTotal:":
+                    start = 1
+                    red = 0
+                    used = 1
+                    current_block.append(i-1)
+                    head.append(tokens[1] +" "+tokens[2])
+            
+                if tokens[3] == "VmallocChunk:":
+                    start = 0
+                    if int(red) > int(used):
+                        outputfile.write("BUG detected: conserve mode threshold was calculated wrong")
+                        outputfile.write("\n")                          
+                        outputfile.write("used: " + str(used) + " vs red: " +str(red))   
+                        outputfile.write("\n")  
+                        outputfile.write("\n")
+                    
+                if start == 1:
+                    elements = elements + 1 
+                
                 for j in range(len(tokens)-1):
-                    if (tokens[j] == "mode" and tokens[j+1] == "entered\"") or (tokens[j] == "enters" and tokens[j+1] == "memory"):
-                        current_block.append(i)
-                        head.append(tokens[1] +" "+tokens[2])
-                        Iteration = Iteration + 1   
-                        #elements = 0 
+                    #if (tokens[j] == "service=kernel" and tokens[j+1] == "conserve=on"):
+                    
+                    if tokens[j].split("=\"")[0] ==  "used":   
+                        used = int(tokens[j].split("=\"")[1])
+                        print("used " + str(used))
+                        
+                    if tokens[j].split("=\"")[0] ==  "red":                     
+                        red = int(tokens[j].split("=\"")[1]) 
+                        print("red "+ str(red))
+                                                                  
+                for j in range(len(tokens)-1):
+                    if (tokens[j] == "mode" and tokens[j+1] == "entered\"") or (tokens[j] == "enters" and tokens[j+1] == "memory"):               
+                        elements = 0 
+
         except:
             print("jump! conserve")
 
 
 
-    print("head "  + str(len(head)))
+    
+    
+    
     data = []
-    for i in range(33):    
+    for i in range(elements):    
         data.append(["dummy"])
          
     
     print(len(current_block)+1) 
     for i in range(len(current_block)):  
-        for i in range(33):             
+        for i in range(elements):             
             data[i].append("dummy")
         
 
-    for i in range(33):
+    for i in range(elements):
         tokens = lines[block + current_block[0]+i+1].split() 
         print(tokens)
         data[i][0] = tokens[3]   
         
     for j in range(len(current_block)):
-        for i in range(32):
+        for i in range(elements):
             tokens = lines[block + current_block[j]+i+1].split() 
             data[i][j+1] = tokens[4]
                       
@@ -877,7 +895,7 @@ def conserve(block, lines, end_of_block, outputfile):
     outputfile.write("CONSERVE MODE ENTERED")
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
-    outputfile.write("\n")   
+    outputfile.write("\n")
     outputfile.write("\n")  
     outputfile.write("\n")  
     
@@ -993,12 +1011,12 @@ def find_blocks(filename):
         else:
             mem_overview(mem_overv,lines,cmd_used_at[end_of_block+1], outputfile)                                
     
-    #if len(crashlogs)>0:
-    #    end_of_block = cmd_used_at.index(crashlogs[0])        
-    #    if end_of_block == len(cmd_used_at)-1:
-    #        conserve(crashlogs[0],lines,i, outputfile)
-    #    else:
-    #        conserve(crashlogs[0],lines,cmd_used_at[end_of_block+1], outputfile)            
+    if len(crashlogs)>0:
+        end_of_block = cmd_used_at.index(crashlogs[0])        
+        if end_of_block == len(cmd_used_at)-1:
+            conserve(crashlogs[0],lines,i, outputfile)
+        else:
+            conserve(crashlogs[0],lines,cmd_used_at[end_of_block+1], outputfile)            
 
 
     if len(sys_top_lines)>0:
@@ -1084,8 +1102,5 @@ if __name__ == "__main__":
     for i, arg in enumerate(sys.argv):
         print(f"Argument {i:>6}: {arg}")
 
-
-
     find_blocks(sys.argv[1])
-
 
