@@ -4,6 +4,8 @@
 #github
 #kommentare
 
+#manual für installation und flags
+
 #github test
 
 ################
@@ -38,12 +40,15 @@
 
 #mehrere Files einlesen
 
-#flags. -> debug output, cpu oder mem, ...
+#flags. 
+    #cpu oder mem oder beides
+    #-a . all flag. outputs die nur mit vorbedingungen ausgegeben werden auch ausgeben.
+    #debug flag -> block xyz not found
+
 
 #in die ausgabe printen wenn ein Befehl/Block nicht gefunden wurde
 
-
-
+#IPS engine und ips session: wenn eine einzelne IPS engine hoch ist und ein ein einzelner IPS Session wert viel mem verbruacht -> vermutlich gleiche PID
 
 
 
@@ -97,10 +102,49 @@
 
 #fragmentierter Memory Verbrauch für slabs sind noch nicht plausibel
 
-
+# mem conserve mode conisitency check used vs red triggert nicht.
 
 
 ######################################
+######################################
+                #CPU
+######################################
+#################################
+#TO DO FEATURES
+
+
+#get system performance
+    #CPU states ausgeben
+    #bei hohen IRQ oder SOFTIRQ -> proc/interrupts überprüfen
+    
+#proc/interrupts
+    #nur als helferfunktion?
+    #IPI0 bis IPI5 wichtig?
+    #if bedingung err>0 -> Ausgeben!
+    
+#diag sys session list
+#sessions nach und nach durchgehen
+#was muss sonst noch in die tabelle?
+#config system settings -> asymptotic enable?
+#proto übersetzen für lesbarkeit -> eg. proto=6 -> TCP
+#Tabelle:
+#    TYP        DIRTY        NDR        NPU
+#    proto=6    #hits        #hits    #hits
+#    proto=7    ...
+#   
+
+#config system settings
+#helferfunktion verschiedene checks werden vermutlich daten hier raus ziehen wollen.
+
+#check sys vd 
+#irgendwas mit fib. Welcher wert ist hier wichtig? 
+
+####################################
+#Bugs
+
+
+
+
 
 #import numpy as np
 
@@ -108,15 +152,32 @@ import math
 
 from tabulate import tabulate
 import sys
-from pip._vendor.progress.colors import red
-from _ast import If
-#from Tools.scripts.finddiv import process
-#from test.test_unparse import try_except_finally
-#from _ast import If
 
 
 
+def sys_set(sys_set_start_line, lines, end_of_block):
+    print("IPS SESSIONS")
+    print(lines[sys_set_start_line[0]])
+    
 
+
+    table_iter = 0
+    data = []
+    head = ["Name","Value"]
+    for i in range(end_of_block-sys_set_start_line[0]-1):    
+        tokens = lines[sys_set_start_line[0]+i].split()  
+        try:
+            if len(tokens)>0:
+                      
+                data.append([str(tokens[1])])
+                data[table_iter].append(str(tokens[2]))
+                table_iter = table_iter + 1
+
+        except:
+            print("jump! sys_settings")
+            
+    
+    return data
 
 
 def wad_t(wad_table, lines, end_of_block,outputfile):
@@ -332,11 +393,8 @@ def slab(slab_start_line, lines, end_of_block,outputfile):
             print("jump! slab")        
 
         
-    
-    #elements = elements - 2 #time and I,OWA,... lines
+
     offset = offset -1
-    #print("elements " +str(elements))
-    #print("offset " +str(offset))
 
 
     data = []
@@ -474,7 +532,6 @@ def mem_overview(mem_start_line, lines, end_of_block,outputfile):
         
             
     head = ["Name", "Size"]          
-   # print(tabulate(data,headers=head,tablefmt="grid"))  
     
     outputfile.write("MEMORY OVERVIEW")
     outputfile.write("\n")    
@@ -624,8 +681,8 @@ def cmdb(cmdb_occurances, lines, end_of_block,outputfile):
     cmdb_short = []
     for i in range(len(cmdb_tuples)):
         if(cmdb_tuples[i][0].isnumeric()) == True:
-            #print(cmdb_tuples[i][0])
             size_numbered_processes = size_numbered_processes + int(cmdb_tuples[i][1])
+            
         if(cmdb_tuples[i][0].isnumeric()) == False: 
               cmdb_short.append(cmdb_tuples[i])
 
@@ -691,7 +748,6 @@ def sys_top(blocks, lines, end_of_block,outputfile):
 
         for j in range(elements):
             #Blockstart + n-th Block Offset + RunTime Lines Offset(2)
-           # print(lines[blocks + current_block[i] + j + 2].split())
             tokens = lines[blocks + current_block[i] + j + 2].split()
             token_tuple = (tokens[0],tokens[1])
             processes.append(token_tuple)  
@@ -700,8 +756,6 @@ def sys_top(blocks, lines, end_of_block,outputfile):
     all_detected_processes = []
     [all_detected_processes.append(x) for x in processes if x not in all_detected_processes]  
     
-    #print(all_detected_processes)
-
 
     data = []
     for i in range(len(all_detected_processes)):    
@@ -716,8 +770,7 @@ def sys_top(blocks, lines, end_of_block,outputfile):
     for k in range(len(all_detected_processes)):
         data[k][0] = all_detected_processes[k]
 
-    #print(data)  
-        
+
 
     for i in range(len(current_block)):
 
@@ -738,8 +791,7 @@ def sys_top(blocks, lines, end_of_block,outputfile):
     
 #Problem: Reihenfolge stimmt nicht zwischen den Tabellen. Tabellen könnten unterschiedliche elemente haben. Wir könnten mehr elemente hier haben.
 
-#
-    #print(tabulate(data,headers=head,tablefmt="grid"))
+
 
     outputfile.write("SYS TOP / SYS TOP ALL")
     outputfile.write("\n")    
@@ -799,7 +851,6 @@ def general_system_information(gen_start_line, lines, end_of_block,outputfile):
     outputfile.write("\n")  
     outputfile.write("\n")          
             
-#https://www.geeksforgeeks.org/how-to-make-a-table-in-python/
 
 def conserve(block, lines, end_of_block, outputfile):
     print("CONSERVE MODE ENTERED")
@@ -889,9 +940,96 @@ def conserve(block, lines, end_of_block, outputfile):
     outputfile.write("\n")  
     outputfile.write("\n")  
     
+
+
+################################################################################################################################
+######################################################  CPU #######################################################################
+################################################################################################################################
+
+def sys_top_cpu(blocks, lines, end_of_block,outputfile):
+    print("SYS TOP CPU / SYS TOP ALL CPU")
+
+    elements = 0
+    head = ["Name"]   
+    Iteration = 1
+    current_block = []
+    for i in range(end_of_block-blocks):    
+        tokens = lines[blocks+i].split()
+        try: 
+            if len(tokens)>0:
+                elements = elements + 1 
+                if tokens[0] == "Run" or tokens[1] == "Time:":
+                    current_block.append(i)
+                    head.append(str(Iteration))
+                    Iteration = Iteration + 1   
+                    elements = 0 
+        except:
+            print("jump! sys top CPU")
+    processes = []
+    
+    elements = elements - 1
+
+    for i in range(len(current_block)):
+
+        for j in range(elements):
+            #Blockstart + n-th Block Offset + RunTime Lines Offset(2)
+            tokens = lines[blocks + current_block[i] + j + 2].split()
+            token_tuple = (tokens[0],tokens[1])
+            processes.append(token_tuple)  
+
+
+    all_detected_processes = []
+    [all_detected_processes.append(x) for x in processes if x not in all_detected_processes]  
+    
+
+    data = []
+    for i in range(len(all_detected_processes)):    
+        data.append(["-"])
+
+
+    for i in range(len(all_detected_processes)):     
+        for j in range(len(current_block)):
+            data[i].append("-")
+    
+    
+    for k in range(len(all_detected_processes)):
+        data[k][0] = all_detected_processes[k]
+
+
+
+    for i in range(len(current_block)):
+
+        for j in range(elements):
+            #Blockstart + n-th Block Offset + RunTime Lines Offset(2)
+            tokens = lines[blocks + current_block[i] + j + 2].split()
+            curr_process_tuple = (tokens[0], tokens[1]) 
+            
+            #search the process in the Table and save memdata in the table
+            for k in range(len(all_detected_processes)):
+                if curr_process_tuple == data[k][0]:
+                    #there is an column line after the memory column. The last column is an int not a float -> check if there is a "."
+                    if "." in tokens[-1]: 
+                        data[k][1+i] = tokens[-2] 
+                    else:
+                        data[k][1+i] = tokens[-3]             
+            
+    
+#Problem: Reihenfolge stimmt nicht zwischen den Tabellen. Tabellen könnten unterschiedliche elemente haben. Wir könnten mehr elemente hier haben.
+
+
+
+    outputfile.write("SYS TOP CPU / SYS TOP ALL CPU")
+    outputfile.write("\n")    
+    outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
+    outputfile.write("\n")   
+    outputfile.write("\n")  
+    outputfile.write("\n")  
+
+
+
+
         
 def find_blocks(filename):
-    print("CRASHLOG")
 
 
     file = open(filename,"r") 
@@ -910,6 +1048,7 @@ def find_blocks(filename):
     ips_session = []
     mig = []
     wad_table = []
+    sys_settings = []
     
     cmd_used_at = []
     
@@ -924,11 +1063,9 @@ def find_blocks(filename):
         len_tokens = len(tokens)
         for j in range(len(tokens)):
             
-            if tokens[j] == "diag" or tokens[j] == "diagnose" or tokens[j] == "get" or tokens[j] == "fnsysctl" or tokens[j] == "exec":
+            if tokens[j] == "diag" or tokens[j] == "diagnose" or tokens[j] == "get" or tokens[j] == "fnsysctl" or tokens[j] == "exec" or tokens[j] == "show":
                 cmd_used_at.append(i)
-                #print(str(i) + " " + line)
-        
-        
+
         
         if len(tokens) > 3:
             for t in range(len_tokens-1):
@@ -973,11 +1110,12 @@ def find_blocks(filename):
                     mig.append(i)                     
 
                 if tokens[t] == "wad" and tokens[t+1] == "memory" and tokens[t+2] == "sum":
-                    wad_table.append(i)       
-                        
+                    wad_table.append(i)
+                           
+                if tokens[t] == "full-configuration" and tokens[t+1] == "system" and tokens[t+2] == "settings":
+                    sys_settings.append(i)                        
             
-
-     
+   
         i = i+1
         
         
@@ -993,6 +1131,13 @@ def find_blocks(filename):
             general_system_information(general_system_lines,lines,i,outputfile)       
         else:
             general_system_information(general_system_lines,lines,cmd_used_at[end_of_block+1], outputfile)      
+
+    if len(sys_settings)>0:       
+        end_of_block = cmd_used_at.index(sys_settings[0])
+        if end_of_block == len(cmd_used_at)-1:        
+            settings = sys_set(sys_settings,lines,i)       
+        else:
+            settings = sys_set(sys_settings,lines,cmd_used_at[end_of_block+1])  
 
     if len(mem_overv)>0:
         end_of_block = cmd_used_at.index(mem_overv[0])
@@ -1015,7 +1160,9 @@ def find_blocks(filename):
             if end_of_block == len(cmd_used_at)-1:            
                 sys_top(sys_top_lines[j],lines,i,outputfile)
             else:
-                sys_top(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)        
+                sys_top(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)      
+
+
 
     if len(cmdb_occurances)>0:
         end_of_block = cmd_used_at.index(cmdb_occurances[0])
@@ -1083,14 +1230,36 @@ def find_blocks(filename):
     if len(wad_table) == 0:
         outputfile.write("diagnose wad memory sum not found or empty")         
 
+
+##########################
+############## CPU ######
+##########################
+
+    if len(sys_top_lines)>0:
+        for j in range(len(sys_top_lines)):                     
+            end_of_block = cmd_used_at.index(sys_top_lines[j])
+            if end_of_block == len(cmd_used_at)-1:            
+                sys_top_cpu(sys_top_lines[j],lines,i,outputfile)
+            else:
+                sys_top_cpu(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)        
+
+
+
+
+
+
+
     outputfile.close()
    
    
    
-if __name__ == "__main__":
-    print(f"Arguments count: {len(sys.argv)}")
-    for i, arg in enumerate(sys.argv):
-        print(f"Argument {i:>6}: {arg}")
+#if __name__ == "__main__":
+#    print(f"Arguments count: {len(sys.argv)}")
+#    for i, arg in enumerate(sys.argv):
+#        print(f"Argument {i:>6}: {arg}")
+#
+#    find_blocks(sys.argv[1])
 
-    find_blocks(sys.argv[1])
+find_blocks("conserve_thresh_bug.txt")
+
 
