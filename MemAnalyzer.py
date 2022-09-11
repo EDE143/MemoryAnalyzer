@@ -118,6 +118,8 @@
     #bei hohen IRQ oder SOFTIRQ -> proc/interrupts überprüfen
     
 #proc/interrupts
+#diagnose hardware sysinfo interrupt
+
     #nur als helferfunktion?
     #IPI0 bis IPI5 wichtig?
     #if bedingung err>0 -> Ausgeben!
@@ -127,11 +129,7 @@
 #was muss sonst noch in die tabelle?
 #config system settings -> asymptotic enable?
 #proto übersetzen für lesbarkeit -> eg. proto=6 -> TCP
-#Tabelle:
-#    TYP        DIRTY        NDR        NPU
-#    proto=6    #hits        #hits    #hits
-#    proto=7    ...
-#   
+
 
 #config system settings
 #helferfunktion verschiedene checks werden vermutlich daten hier raus ziehen wollen.
@@ -466,8 +464,6 @@ def slab(slab_start_line, lines, end_of_block,outputfile):
 def mem_overview(mem_start_line, lines, end_of_block,outputfile):
     print("MEMORY OVERVIEW")
    
-    print("gathered from " + lines[mem_start_line[0]])
-
     
     usefull_values = 8
     
@@ -533,7 +529,7 @@ def mem_overview(mem_start_line, lines, end_of_block,outputfile):
             
     head = ["Name", "Size"]          
     
-    outputfile.write("MEMORY OVERVIEW")
+    outputfile.write("diagnose hardware sysinfo memory")
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
     outputfile.write("\n") 
@@ -793,7 +789,7 @@ def sys_top(blocks, lines, end_of_block,outputfile):
 
 
 
-    outputfile.write("SYS TOP / SYS TOP ALL")
+    outputfile.write("SYS TOP MEMORY / SYS TOP ALL MEMORY")
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
     outputfile.write("\n")   
@@ -1026,8 +1022,247 @@ def sys_top_cpu(blocks, lines, end_of_block,outputfile):
     outputfile.write("\n")  
 
 
+def diag_session_list(blocks, lines, end_of_block,outputfile):
+    print("diag sys session list")
 
 
+
+    #https://community.fortinet.com/t5/FortiGate/Troubleshooting-Tip-FortiGate-session-table-information/ta-p/196988
+    data = []
+    head = ["dirty", "may_dirty","local","oe","re","ndr", "npu", "rem", "eph","br","redir","wccp","nlb","os","rs","auth","block","ext","log" , "app_valid"]       
+    for i in range(17):    
+        data.append([int(0)])
+
+
+    for i in range(17):     
+        for j in range(len(head)):
+            data[i].append(int(0))
+
+
+    for i in range(17):
+        data[i][0] = i+1
+        
+
+
+
+    for i in range(end_of_block-blocks):    
+        tokens = lines[blocks+i].split()
+        try: 
+            if len(tokens)>0:
+                
+                if tokens[0] == "session" and tokens[1] == "info:":
+                    proto = tokens[2].split("=")[1] 
+                    int_proto = int(proto) -1
+
+                    
+                if tokens[0].split("=")[0] == "state":
+
+                    first_state = tokens[0].split("=")[1]
+                    
+                    if first_state == "dirty":                   
+                        data[int_proto][1] = data[int_proto][1] + 1
+                            
+                    if first_state == "may_dirty":
+                        data[int_proto][2] = data[int_proto][2] + 1                            
+                    
+                    if first_state == "local":                     
+                        data[int_proto][3] = data[int_proto][3] + 1                    
+                    
+                    if first_state == "oe":
+                        data[int_proto][4] = data[int_proto][4] + 1
+
+                    if first_state == "re":
+                        data[int_proto][5] = data[int_proto][5] + 1
+
+                    if first_state == "ndr":
+                        data[int_proto][6] = data[int_proto][6] + 1                               
+                            
+                    if first_state == "npu":
+                        data[int_proto][7] = data[int_proto][7] + 1        
+
+                    if first_state == "rem":
+                        data[int_proto][8] = data[int_proto][8] + 1
+                    
+                    if first_state == "eph":
+                        data[int_proto][9] = data[int_proto][9] + 1                    
+                    
+                    if first_state == "br":
+                        data[int_proto][10] = data[int_proto][10] + 1        
+
+                    if first_state == "redir":
+                        data[int_proto][11] = data[int_proto][11] + 1        
+                    
+                    if first_state == "wccp":
+                        data[int_proto][12] = data[int_proto][12] + 1                            
+                    
+                    if first_state == "nlb":
+                        data[int_proto][13] = data[int_proto][13] + 1                            
+                    
+                    if first_state == "os":
+                        data[int_proto][14] = data[int_proto][14] + 1                            
+                    
+                    if first_state == "rs":
+                        data[int_proto][15] = data[int_proto][15] + 1   
+                            
+                    if first_state == "auth":
+                        data[int_proto][16] = data[int_proto][16] + 1                               
+                            
+                    if first_state == "block":
+                        data[int_proto][17] = data[int_proto][17] + 1                               
+                            
+                    if first_state == "ext":
+                        data[int_proto][18] = data[int_proto][18] + 1   
+                            
+                    if first_state == "log":
+                        data[int_proto][19] = data[int_proto][19] + 1                                                                                                                                       
+                            
+                    if first_state == "app_valid":
+                        data[int_proto][20] = data[int_proto][20] + 1                            
+                    
+                    
+                    
+                    for j in range(len(tokens)):
+                  
+                        if tokens[j] == "dirty":
+                            data[int_proto][1] = data[int_proto][1] + 1
+                            
+                        if tokens[j] == "may_dirty":
+                            data[int_proto][2] = data[int_proto][2] + 1                            
+                    
+                        if tokens[j] == "local":
+                            data[int_proto][3] = data[int_proto][3] + 1                    
+                    
+                        if tokens[j] == "oe":
+                            data[int_proto][4] = data[int_proto][4] + 1
+
+                        if tokens[j] == "re":
+                            data[int_proto][5] = data[int_proto][5] + 1
+
+                        if tokens[j] == "ndr":
+                            data[int_proto][6] = data[int_proto][6] + 1                               
+                            
+                        if tokens[j] == "npu":
+                            data[int_proto][7] = data[int_proto][7] + 1        
+
+                        if tokens[j] == "rem":
+                            data[int_proto][8] = data[int_proto][8] + 1
+                    
+                        if tokens[j] == "eph":
+                            data[int_proto][9] = data[int_proto][9] + 1                    
+                    
+                        if tokens[j] == "br":
+                            data[int_proto][10] = data[int_proto][10] + 1        
+
+                        if tokens[j] == "redir":
+                            data[int_proto][11] = data[int_proto][11] + 1        
+                    
+                        if tokens[j] == "wccp":
+                            data[int_proto][12] = data[int_proto][12] + 1                            
+                    
+                        if tokens[j] == "nlb":
+                            data[int_proto][13] = data[int_proto][13] + 1                            
+                    
+                        if tokens[j] == "os":
+                            data[int_proto][14] = data[int_proto][14] + 1                            
+                    
+                        if tokens[j] == "rs":
+                            data[int_proto][15] = data[int_proto][15] + 1   
+                            
+                        if tokens[j] == "auth":
+                            data[int_proto][16] = data[int_proto][16] + 1                               
+                            
+                        if tokens[j] == "block":
+                            data[int_proto][17] = data[int_proto][17] + 1                               
+                            
+                        if tokens[j] == "ext":
+                            data[int_proto][18] = data[int_proto][18] + 1   
+                            
+                        if tokens[j] == "log":
+                            data[int_proto][19] = data[int_proto][19] + 1                                                                                                                                       
+                            
+                        if tokens[j] == "app_valid":
+                            data[int_proto][20] = data[int_proto][20] + 1                                                                                    
+                                                        
+                            
+                            
+        except:
+            print("jump! diag sys session list")
+   
+
+            
+
+    outputfile.write("\n")
+    outputfile.write("session list table")
+    outputfile.write("\n")
+    outputfile.write("diag sys session list")        
+    outputfile.write("\n")    
+    outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
+    outputfile.write("\n")   
+    outputfile.write("\n")  
+    outputfile.write("\n")
+
+
+
+
+
+
+
+
+
+def sys_performance_status(sys_start_line, lines, end_of_block,outputfile):
+    print("get system performance status")
+    outputfile.write("\n") 
+    outputfile.write("\n") 
+    outputfile.write("get sys performance status")
+    outputfile.write("\n") 
+    outputfile.write("\n") 
+    
+    #irq, softirqs
+    data = [0,0]
+    
+    for i in range(end_of_block-sys_start_line[0]-1):    
+        tokens = lines[sys_start_line[0]+i].split() 
+        
+        try:
+            if len(tokens)>0:
+                for j in range(len(tokens)):
+                    if "states" in tokens[j]: 
+                        outputfile.write(lines[sys_start_line[0]+i]) 
+                        outputfile.write("\n") 
+
+                    if "irq" == tokens[j]:                                                                        
+                        irq = int(tokens[j-1][:-1])
+                        if irq > int(data[0]):
+                            data[0] = irq
+ 
+                    if "softirq" == tokens[j]: 
+                        softirq = int(tokens[j-1][:-1])
+                        if int(softirq) > int(data[1]):  
+                            data[1] = softirq
+                                          
+          
+    
+                    if "sessions:" == tokens[j] or "session" == tokens[j]:                         
+                            outputfile.write(lines[sys_start_line[0]+i]) 
+                            outputfile.write("\n")
+    
+                    if "NPU" == tokens[j]: 
+                            outputfile.write(lines[sys_start_line[0]+i]) 
+                            outputfile.write("\n")
+                                                  
+                    if "nTurbo" == tokens[j]:   
+                            outputfile.write(lines[sys_start_line[0]+i]) 
+                            outputfile.write("\n")
+                                                
+        except:
+            print("jump! get system performance status")
+
+
+    return data
+
+####################################################################################################
+#################################### MAIN ##########################################################
+####################################################################################################
         
 def find_blocks(filename):
 
@@ -1049,6 +1284,8 @@ def find_blocks(filename):
     mig = []
     wad_table = []
     sys_settings = []
+    session_list = []
+    performance_status = []
     
     cmd_used_at = []
     
@@ -1098,7 +1335,10 @@ def find_blocks(filename):
         if len(tokens) > 4:
             for t in range(len_tokens-2):
                 if tokens[t] == "system" and tokens[t+1] == "performance" and tokens[t+2] == "status":
-                    general_system_lines.append(i)    
+                    performance_status.append(i)    
+
+                if tokens[t] == "sys" and tokens[t+1] == "session" and tokens[t+2] == "list":
+                    session_list.append(i)    
         
                 if tokens[t] == "sys" and tokens[t+1] == "top":
                     sys_top_lines.append(i)                       
@@ -1123,8 +1363,25 @@ def find_blocks(filename):
     output_file_split = filename[:len(filename)-4]
     output_file_name = "output_" + output_file_split + ".txt" 
     outputfile = open(output_file_name,"w") 
-    
 
+    outputfile.write("\n")
+    outputfile.write("\n") 
+    outputfile.write("\n")
+    outputfile.write("###################################################################################################################################")
+    outputfile.write("\n")    
+    outputfile.write("###################################################################################################################################")
+    outputfile.write("\n")    
+    outputfile.write("##############################################         MEMORY            ###########################################################")        
+    outputfile.write("\n")    
+    outputfile.write("###################################################################################################################################")
+    outputfile.write("\n")        
+    outputfile.write("###################################################################################################################################")
+    outputfile.write("\n")    
+    outputfile.write("\n")         
+    outputfile.write("\n") 
+
+    
+    #get system status
     if len(general_system_lines)>0:
         end_of_block = cmd_used_at.index(general_system_lines[0])
         if end_of_block == len(cmd_used_at)-1:        
@@ -1132,6 +1389,13 @@ def find_blocks(filename):
         else:
             general_system_information(general_system_lines,lines,cmd_used_at[end_of_block+1], outputfile)      
 
+    if len(general_system_lines) == 0: 
+        outputfile.write("\n")   
+        outputfile.write("get system status not found") 
+        outputfile.write("\n")   
+
+
+    #config system settings
     if len(sys_settings)>0:       
         end_of_block = cmd_used_at.index(sys_settings[0])
         if end_of_block == len(cmd_used_at)-1:        
@@ -1139,13 +1403,26 @@ def find_blocks(filename):
         else:
             settings = sys_set(sys_settings,lines,cmd_used_at[end_of_block+1])  
 
+    if len(sys_settings) == 0: 
+        outputfile.write("\n")   
+        outputfile.write("config system settings not found") 
+        outputfile.write("\n") 
+            
+    #diagnose hardware sysinfo memory
     if len(mem_overv)>0:
         end_of_block = cmd_used_at.index(mem_overv[0])
         if end_of_block == len(cmd_used_at)-1:        
             mem_overview(mem_overv,lines,i,outputfile)       
         else:
             mem_overview(mem_overv,lines,cmd_used_at[end_of_block+1], outputfile)                                
-    
+
+    if len(mem_overv) == 0: 
+        outputfile.write("\n")   
+        outputfile.write("diagnose hardware sysinfo memory not found") 
+        outputfile.write("\n")   
+
+
+    #diagnose debug crashlog read    
     if len(crashlogs)>0:
         end_of_block = cmd_used_at.index(crashlogs[0])        
         if end_of_block == len(cmd_used_at)-1:
@@ -1153,7 +1430,12 @@ def find_blocks(filename):
         else:
             conserve(crashlogs[0],lines,cmd_used_at[end_of_block+1], outputfile)            
 
+    if len(crashlogs) == 0: 
+        outputfile.write("\n")   
+        outputfile.write("diagnose debug crashlog read not found") 
+        outputfile.write("\n")   
 
+    #diag sys top MEMORY
     if len(sys_top_lines)>0:
         for j in range(len(sys_top_lines)):                     
             end_of_block = cmd_used_at.index(sys_top_lines[j])
@@ -1162,28 +1444,50 @@ def find_blocks(filename):
             else:
                 sys_top(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)      
 
+    if len(sys_top_lines) == 0: 
+        outputfile.write("\n")   
+        outputfile.write("diag sys top not found") 
+        outputfile.write("\n") 
 
-
+    # /DEV/CMDB
     if len(cmdb_occurances)>0:
         end_of_block = cmd_used_at.index(cmdb_occurances[0])
         if end_of_block == len(cmd_used_at)-1:        
             cmdb(cmdb_occurances,lines,i,outputfile)
         else:
             cmdb(cmdb_occurances,lines,cmd_used_at[end_of_block+1], outputfile)        
+
+    if len(cmdb_occurances) == 0: 
+        outputfile.write("\n")   
+        outputfile.write("/DEV/CMDB not found") 
+        outputfile.write("\n")     
         
+    # /TMP         
     if len(tmp_occurances)>0:
         end_of_block = cmd_used_at.index(tmp_occurances[0])
         if end_of_block == len(cmd_used_at)-1:        
             tmp(tmp_occurances,lines,i,outputfile)
         else:
             tmp(tmp_occurances,lines,cmd_used_at[end_of_block+1], outputfile)        
-        
+
+    if len(tmp_occurances) == 0: 
+        outputfile.write("\n")   
+        outputfile.write("/TMP not found") 
+        outputfile.write("\n")     
+
+    # /DEV/SHM        
     if len(shm_occurances)>0:
         end_of_block = cmd_used_at.index(shm_occurances[0])
         if end_of_block == len(cmd_used_at)-1:        
             shm(shm_occurances,lines,i,outputfile)
         else:
             shm(shm_occurances,lines,cmd_used_at[end_of_block+1], outputfile)        
+     
+    if len(shm_occurances) == 0: 
+        outputfile.write("\n")   
+        outputfile.write("/DEV/SHM not found") 
+        outputfile.write("\n")     
+     
      
     #diagnose hardware sysinfo slab   
     if len(slabinfo)>0:
@@ -1193,9 +1497,11 @@ def find_blocks(filename):
         else:
             slab(slabinfo,lines,cmd_used_at[end_of_block+1], outputfile)        
     
-    if len(slabinfo) == 0:    
+    if len(slabinfo) == 0: 
+        outputfile.write("\n")   
         outputfile.write("diagnose hardware sysinfo slab not found") 
-
+        outputfile.write("\n")
+        
     #get ips session
     if len(ips_session)>0:
         end_of_block = cmd_used_at.index(ips_session[0])
@@ -1205,8 +1511,9 @@ def find_blocks(filename):
             ips_s(ips_session,lines,cmd_used_at[end_of_block+1], outputfile)        
     
     if len(ips_session) == 0:
+        outputfile.write("\n")
         outputfile.write("get ips session not found")   
-        
+        outputfile.write("\n")
           
     #diagnose test application miglogd 6
     if len(mig)>0:
@@ -1217,8 +1524,10 @@ def find_blocks(filename):
             miglogd(mig,lines,cmd_used_at[end_of_block+1], outputfile)        
 
     if len(mig) == 0:
+        outputfile.write("\n")
         outputfile.write("diagnose test application miglogd 6 not found") 
-
+        outputfile.write("\n")
+        
     #diagnose wad memory sum
     if len(wad_table)>0:
         end_of_block = cmd_used_at.index(wad_table[0])
@@ -1228,13 +1537,47 @@ def find_blocks(filename):
             wad_t(wad_table[0],lines,cmd_used_at[end_of_block+1], outputfile)        
 
     if len(wad_table) == 0:
+        outputfile.write("\n")
         outputfile.write("diagnose wad memory sum not found or empty")         
-
+        outputfile.write("\n")
 
 ##########################
 ############## CPU ######
 ##########################
 
+    outputfile.write("\n")
+    outputfile.write("\n") 
+    outputfile.write("\n")
+    outputfile.write("###################################################################################################################################")
+    outputfile.write("\n")
+    outputfile.write("###################################################################################################################################")
+    outputfile.write("\n")
+    outputfile.write("##############################################         CPU              ###########################################################")        
+    outputfile.write("\n")
+    outputfile.write("###################################################################################################################################")    
+    outputfile.write("\n")
+    outputfile.write("###################################################################################################################################")
+    outputfile.write("\n")    
+    outputfile.write("\n")         
+    outputfile.write("\n") 
+    
+    #get system performance status
+    #perf_data = [%irq, %softirqs]
+    if len(performance_status)>0:
+        end_of_block = cmd_used_at.index(performance_status[0])
+        if end_of_block == len(cmd_used_at)-1:        
+            perf_data = sys_performance_status(performance_status,lines,i,outputfile)       
+        else:
+            perf_data = sys_performance_status(performance_status,lines,cmd_used_at[end_of_block+1], outputfile)      
+            
+        print(perf_data)
+    if len(performance_status) == 0: 
+        outputfile.write("\n")   
+        outputfile.write("get system performance status not found") 
+        outputfile.write("\n")       
+    
+    
+    #diag sys top
     if len(sys_top_lines)>0:
         for j in range(len(sys_top_lines)):                     
             end_of_block = cmd_used_at.index(sys_top_lines[j])
@@ -1243,9 +1586,23 @@ def find_blocks(filename):
             else:
                 sys_top_cpu(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)        
 
+    if len(sys_top_lines) == 0: 
+        outputfile.write("\n")   
+        outputfile.write("diag sys top not found") 
+        outputfile.write("\n") 
 
+    #diag sys session list
+    if len(session_list)>0:
+        end_of_block = cmd_used_at.index(session_list[0])
+        if end_of_block == len(cmd_used_at)-1:        
+            diag_session_list(session_list[0],lines,i,outputfile)       
+        else:
+            diag_session_list(session_list[0],lines,cmd_used_at[end_of_block+1], outputfile)      
 
-
+    if len(session_list) == 0: 
+        outputfile.write("\n")   
+        outputfile.write("diag sys session list not found") 
+        outputfile.write("\n")   
 
 
 
@@ -1253,13 +1610,14 @@ def find_blocks(filename):
    
    
    
-#if __name__ == "__main__":
-#    print(f"Arguments count: {len(sys.argv)}")
-#    for i, arg in enumerate(sys.argv):
-#        print(f"Argument {i:>6}: {arg}")
-#
-#    find_blocks(sys.argv[1])
+if __name__ == "__main__":
+    print(f"Arguments count: {len(sys.argv)}")
+    for i, arg in enumerate(sys.argv):
+        print(f"Argument {i:>6}: {arg}")
 
-find_blocks("conserve_thresh_bug.txt")
+    find_blocks(sys.argv[1])
+
+#find_blocks("diag_session_list.txt")
+
 
 
