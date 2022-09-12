@@ -18,6 +18,13 @@
 #Mögliche bug Ursache: Am anfang unsinn:
 #['\x1b[H\x1b[JRun', 'Time:', '10', 'days,', '11', 'hours', 'and', '16', 'minutes']
 
+#DATEN SO AUSLESEN, kein hardcode verwenden
+#        try:
+#            if len(tokens)>0:
+#                for j in range(len(tokens)):
+#                    if "irq" == tokens[j]:                                                                        
+#                        irq = int(tokens[j-1][:-1])
+
 
 #############################
 #LESBARKEIT
@@ -101,8 +108,6 @@
 #Bugs
 
 #fragmentierter Memory Verbrauch für slabs sind noch nicht plausibel
-
-# mem conserve mode conisitency check used vs red triggert nicht.
 
 
 ######################################
@@ -289,7 +294,7 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
     outputfile.write("\n")  
     outputfile.write("\n")      
 
-
+    return data_sorted_table
 
 
 
@@ -537,7 +542,13 @@ def mem_overview(mem_start_line, lines, end_of_block,outputfile):
     outputfile.write("\n")  
     outputfile.write("\n")
     outputfile.write("\n")  
-    outputfile.write("\n")        
+    outputfile.write("\n")
+    
+    return data
+    
+    
+    
+            
     
 def shm(shm_occurances, lines, end_of_block, outputfile):
     print("CALCULATING USAGE OF /DEV/SHM")
@@ -796,6 +807,11 @@ def sys_top(blocks, lines, end_of_block,outputfile):
     outputfile.write("\n")  
     outputfile.write("\n")      
     
+    return data
+
+
+
+
 
 def general_system_information(gen_start_line, lines, end_of_block,outputfile):
     print("GENERAL DEVICE INFORMATION")
@@ -854,6 +870,8 @@ def conserve(block, lines, end_of_block, outputfile):
     
     head = ["Name, ProcessID"]   
     current_block = []
+    red_array = []
+    used_array = []
     elements = 0        #elements in block
     start = 0           #block is starting
     red = 0             #conserve mode consistency red threshold
@@ -873,12 +891,7 @@ def conserve(block, lines, end_of_block, outputfile):
             
                 if tokens[3] == "VmallocChunk:":
                     start = 0
-                    if int(red) > int(used):
-                        outputfile.write("BUG detected: conserve mode threshold was calculated wrong")
-                        outputfile.write("\n")                          
-                        outputfile.write("used: " + str(used) + " vs red: " +str(red))   
-                        outputfile.write("\n")  
-                        outputfile.write("\n")
+
                     
                 if start == 1:
                     elements = elements + 1 
@@ -888,22 +901,32 @@ def conserve(block, lines, end_of_block, outputfile):
                     
                     if tokens[j].split("=\"")[0] ==  "used":   
                         used = int(tokens[j].split("=\"")[1])
+                        used_array.append(used)
                         print("used " + str(used))
                         
                     if tokens[j].split("=\"")[0] ==  "red":                     
                         red = int(tokens[j].split("=\"")[1]) 
+                        red_array.append(red)
                         print("red "+ str(red))
-                                                                  
+                                                                                      
                 for j in range(len(tokens)-1):
                     if (tokens[j] == "mode" and tokens[j+1] == "entered\"") or (tokens[j] == "enters" and tokens[j+1] == "memory"):               
                         elements = 0 
+                   
+
 
         except:
             print("jump! conserve")
 
 
 
-    
+    for i in range(len(used_array)):
+        if used_array[i] < red_array[i]:
+            outputfile.write("BUG detected: conserve mode threshold was calculated wrong")
+            outputfile.write("\n")                          
+            outputfile.write("used: " + str(used_array[i]) + " vs red: " +str(red_array[i]))   
+            outputfile.write("\n")  
+            outputfile.write("\n")   
     
     
     data = []
@@ -1021,6 +1044,9 @@ def sys_top_cpu(blocks, lines, end_of_block,outputfile):
     outputfile.write("\n")  
     outputfile.write("\n")  
 
+    return data
+
+    
 
 def diag_session_list(blocks, lines, end_of_block,outputfile):
     print("diag sys session list")
@@ -1300,7 +1326,7 @@ def find_blocks(filename):
         len_tokens = len(tokens)
         for j in range(len(tokens)):
             
-            if tokens[j] == "diag" or tokens[j] == "diagnose" or tokens[j] == "get" or tokens[j] == "fnsysctl" or tokens[j] == "exec" or tokens[j] == "show":
+            if tokens[j] == "diag" or tokens[j] == "diagnose" or tokens[j] == "get" or tokens[j] == "fnsysctl" or tokens[j] == "exec" or tokens[j] == "show" or tokens[j] == "de" or tokens[j] == "di":
                 cmd_used_at.append(i)
 
         
@@ -1412,9 +1438,9 @@ def find_blocks(filename):
     if len(mem_overv)>0:
         end_of_block = cmd_used_at.index(mem_overv[0])
         if end_of_block == len(cmd_used_at)-1:        
-            mem_overview(mem_overv,lines,i,outputfile)       
+            data_mem_overview = mem_overview(mem_overv,lines,i,outputfile)       
         else:
-            mem_overview(mem_overv,lines,cmd_used_at[end_of_block+1], outputfile)                                
+            data_mem_overview = mem_overview(mem_overv,lines,cmd_used_at[end_of_block+1], outputfile)                                
 
     if len(mem_overv) == 0: 
         outputfile.write("\n")   
@@ -1440,9 +1466,9 @@ def find_blocks(filename):
         for j in range(len(sys_top_lines)):                     
             end_of_block = cmd_used_at.index(sys_top_lines[j])
             if end_of_block == len(cmd_used_at)-1:            
-                sys_top(sys_top_lines[j],lines,i,outputfile)
+                data_sys_top = sys_top(sys_top_lines[j],lines,i,outputfile)
             else:
-                sys_top(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)      
+                data_sys_top = sys_top(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)      
 
     if len(sys_top_lines) == 0: 
         outputfile.write("\n")   
@@ -1532,9 +1558,9 @@ def find_blocks(filename):
     if len(wad_table)>0:
         end_of_block = cmd_used_at.index(wad_table[0])
         if end_of_block == len(cmd_used_at)-1:        
-            wad_t(wad_table,lines,i,outputfile)
+            wad_data_table = wad_t(wad_table,lines,i,outputfile)
         else:
-            wad_t(wad_table[0],lines,cmd_used_at[end_of_block+1], outputfile)        
+            wad_data_table = wad_t(wad_table[0],lines,cmd_used_at[end_of_block+1], outputfile)        
 
     if len(wad_table) == 0:
         outputfile.write("\n")
@@ -1582,9 +1608,9 @@ def find_blocks(filename):
         for j in range(len(sys_top_lines)):                     
             end_of_block = cmd_used_at.index(sys_top_lines[j])
             if end_of_block == len(cmd_used_at)-1:            
-                sys_top_cpu(sys_top_lines[j],lines,i,outputfile)
+                data_sys_top_cpu = sys_top_cpu(sys_top_lines[j],lines,i,outputfile)
             else:
-                sys_top_cpu(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)        
+                data_sys_top_cpu = sys_top_cpu(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)        
 
     if len(sys_top_lines) == 0: 
         outputfile.write("\n")   
@@ -1610,14 +1636,14 @@ def find_blocks(filename):
    
    
    
-if __name__ == "__main__":
-    print(f"Arguments count: {len(sys.argv)}")
-    for i, arg in enumerate(sys.argv):
-        print(f"Argument {i:>6}: {arg}")
+#if __name__ == "__main__":
+#    print(f"Arguments count: {len(sys.argv)}")
+#    for i, arg in enumerate(sys.argv):
+#        print(f"Argument {i:>6}: {arg}")
 
-    find_blocks(sys.argv[1])
+#    find_blocks(sys.argv[1])
 
-#find_blocks("diag_session_list.txt")
+find_blocks("conservemodebug.txt")
 
 
 
