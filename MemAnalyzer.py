@@ -155,7 +155,7 @@ import math
 
 from tabulate import tabulate
 import sys
-
+from collections import Counter
 
 
 def sys_set(sys_set_start_line, lines, end_of_block):
@@ -908,6 +908,12 @@ def conserve(block, lines, end_of_block, outputfile):
                         red = int(tokens[j].split("=\"")[1]) 
                         red_array.append(red)
                         print("red "+ str(red))
+                    
+                    #pop last element so we only track conserve mode entered
+                    if tokens[j] ==  "exits":                     
+                        used_array.pop(-1)
+                        red_array.pop(-1)
+                
                                                                                       
                 for j in range(len(tokens)-1):
                     if (tokens[j] == "mode" and tokens[j+1] == "entered\"") or (tokens[j] == "enters" and tokens[j+1] == "memory"):               
@@ -1069,8 +1075,8 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
         data[i][0] = i+1
         
 
-
-
+    total_sessions = 0
+    dirty_gwy = []
     for i in range(end_of_block-blocks):    
         tokens = lines[blocks+i].split()
         try: 
@@ -1079,7 +1085,9 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
                 if tokens[0] == "session" and tokens[1] == "info:":
                     proto = tokens[2].split("=")[1] 
                     int_proto = int(proto) -1
-
+                    dirty = 0
+                    total_sessions = total_sessions + 1
+                    
                     
                 if tokens[0].split("=")[0] == "state":
 
@@ -1087,7 +1095,8 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
                     
                     if first_state == "dirty":                   
                         data[int_proto][1] = data[int_proto][1] + 1
-                            
+                        dirty = 1
+                                                    
                     if first_state == "may_dirty":
                         data[int_proto][2] = data[int_proto][2] + 1                            
                     
@@ -1151,6 +1160,7 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
                   
                         if tokens[j] == "dirty":
                             data[int_proto][1] = data[int_proto][1] + 1
+                            dirty = 1
                             
                         if tokens[j] == "may_dirty":
                             data[int_proto][2] = data[int_proto][2] + 1                            
@@ -1209,24 +1219,33 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
                         if tokens[j] == "app_valid":
                             data[int_proto][20] = data[int_proto][20] + 1                                                                                    
                                                         
-                            
-                            
+                
+
+                if dirty == 1 and tokens[0] == "orgin->sink:":
+                        dirty_gwy.append(lines[blocks+i])
+                        dirty_gwy_count = Counter(dirty_gwy)
+
+                        
         except:
             print("jump! diag sys session list")
    
-
-            
-
+    
     outputfile.write("\n")
     outputfile.write("session list table")
     outputfile.write("\n")
     outputfile.write("diag sys session list")        
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
-    outputfile.write("\n")   
-    outputfile.write("\n")  
     outputfile.write("\n")
-
+    outputfile.write("TOTAL SESSIONS: "+ str(total_sessions))
+    outputfile.write("\n")
+    for i in range(len(dirty_gwy_count)):
+        outputfile.write("\n")
+        key, value = dirty_gwy_count.popitem()
+        outputfile.write(key + " COUNT = " + str(value))
+        outputfile.write("\n") 
+    outputfile.write("\n")
+    outputfile.write("\n")  
 
 
 
@@ -1643,7 +1662,7 @@ def find_blocks(filename):
 
 #    find_blocks(sys.argv[1])
 
-find_blocks("conservemodebug.txt")
+find_blocks("slave.log")
 
 
 
