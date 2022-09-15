@@ -43,7 +43,6 @@
 
 #debug log <-> try/catch error
 
-#kein hardcode für Filereader
 
 #mehrere Files einlesen
 
@@ -53,10 +52,8 @@
     #debug flag -> block xyz not found
 
 
-#in die ausgabe printen wenn ein Befehl/Block nicht gefunden wurde
 
 #IPS engine und ips session: wenn eine einzelne IPS engine hoch ist und ein ein einzelner IPS Session wert viel mem verbruacht -> vermutlich gleiche PID
-
 
 
 #(optinal. nicht klar wie viel man da rauslesen kann)ROLLUP   diagnose sys top-mem detail 
@@ -69,14 +66,12 @@
 #sys top -> sortieren (vllt vorher addieren und mittelwert berechnen?)
 #(optional) GNUPLOT für den top 5 Verbraucher, wenn es min 5 Datenpunkte gibt. Was kommt auf die Zeitachse? 
 
-#sys top -> CPU Spalte -> sortieren
+#sys top -> CPU Spalte 
 #(optional) GNUPLOT für den top 5 Verbraucher, wenn es min 5 Datenpunkte gibt. Was kommt auf die Zeitachse? 
 #https://stackoverflow.com/questions/8077099/short-guide-how-to-use-gnuplot-with-python
 
 
 #meminfo slab
-#object size * #available objects -> Sortieren.
-#einfach die ganze tabelle kopieren und ganz rechts diese zeile anfügen und danach sortieren.
 #Das offizielle Material sieht anders aus. Interna, S.11
 #Uni Hannover S.55 -> Am Ende werden Pages reserviert. Es sei denn Fortinet hat den next level Scheiß am start.
 
@@ -95,13 +90,27 @@
 #WAD DEBUGGER, interna S.44
 # diagnose wad memory sum -> da gibts noch andere befehle diese tabelle auszulesen. welche? ab in die find_blocks()
 #umrechnen der byes in megatbyte zum besseren auslesen.
-
+# diagnose wad memory all -> debug mehrer wad worker
 
 #CPU und Interrupts
 #interna S.63
 
 #Idee: Vorschläge ausgeben lassen. Beispiel: hoher cached wert und bei miglogd mem und disk erkannt -> abstellen
 #vllt eine art abgleich von symptomen und gelösten tickets. 
+
+
+#wad stats common | grep ses_ctx
+#wad stats worker | grep active_tcp_port
+
+
+
+###########################################################
+#Bugerkennung
+##############################################################
+
+
+#frees > allocs
+
 
 
 ####################################
@@ -229,6 +238,7 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
     block_found = 0
     j = 0
     leak = ""
+    alloc_bug = ""
     for i in range(end_of_block-wad_table):    
         tokens = lines[wad_table+i].split()
         try: 
@@ -249,6 +259,11 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
                 data[j][7] = tokens[7]                  #bytes
                 data[j][8] = tokens[8]                  #max
                 data[j][9] = tokens[9]                  #cmem object name
+                
+                #frees cannot exceed allocs
+                
+                if int(data[j][2]) > int(data[j][1]):
+                    alloc_bug = data[j][9]
                 
                 #check for obvious memory leak
                 if int(tokens[7]) < 0 or int(tokens[8]) < 0:
@@ -293,7 +308,13 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
     outputfile.write("leak found: "+ leak)       
     outputfile.write("\n")  
     outputfile.write("\n")      
-
+    
+    if alloc_bug != "":
+            outputfile.write("\n")    
+            outputfile.write("Wrong allocation found at: "+ leak)       
+            outputfile.write("\n")  
+            outputfile.write("check for more inconsistencies")    
+            outputfile.write("\n")  
     return data_sorted_table
 
 
@@ -1230,6 +1251,18 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
             print("jump! diag sys session list")
    
     
+    #sort sessions gwy
+    tuples = []
+    for i in range(len(dirty_gwy_count)):
+        key, value = dirty_gwy_count.popitem()  
+        print(value)
+        tuple = (key, value)
+        tuples.append(tuple) 
+              
+    tuples_sorted = sorted(tuples, key=lambda x: int(x[1]))
+    tuples_sorted.reverse()
+    
+    
     outputfile.write("\n")
     outputfile.write("session list table")
     outputfile.write("\n")
@@ -1239,10 +1272,12 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
     outputfile.write("\n")
     outputfile.write("TOTAL SESSIONS: "+ str(total_sessions))
     outputfile.write("\n")
-    for i in range(len(dirty_gwy_count)):
+    outputfile.write("Dirty Sessions by gwy:")
+    outputfile.write("\n")
+    for i in range(len(tuples_sorted)):
         outputfile.write("\n")
-        key, value = dirty_gwy_count.popitem()
-        outputfile.write(key + " COUNT = " + str(value))
+        
+        outputfile.write(tuples_sorted[i][0] + " COUNT = " + str(tuples_sorted[i][1]))
         outputfile.write("\n") 
     outputfile.write("\n")
     outputfile.write("\n")  
@@ -1662,7 +1697,7 @@ def find_blocks(filename):
 
 #    find_blocks(sys.argv[1])
 
-find_blocks("slave.log")
+find_blocks("diag_session_list.txt")
 
 
 
