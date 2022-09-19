@@ -104,6 +104,25 @@
 
 
 
+
+
+
+# diag sys proxy stats all
+#was ist das?
+#0.worker.times.lifetime : max 805548 us total 294051767 us avg 38859.75 us (7567 values)
+#0.worker.times.avengine : max 805171 us total 291104084 us avg 38470.21 us (7567 values)
+#0.worker.times.avengine_cb : max 311 us total 23083 us avg 3.05 us (7567 values)
+#0.worker.times.fortiguard : max 0 us total 0 us avg 0.00 us (7567 values)
+
+
+
+
+
+
+
+
+
+
 ###########################################################
 #Bugerkennung
 ##############################################################
@@ -192,10 +211,190 @@ def sys_set(sys_set_start_line, lines, end_of_block):
     return data
 
 
+
+def proxy_stats_all(proxy_table, lines, end_of_block,outputfile):
+    print("### diagnose sys proxy stats all")
+
+    
+    dummy = 0
+    
+    elements = 0
+        
+    #For now - max - total
+    for i in range(end_of_block-proxy_table):    
+        tokens = lines[proxy_table + i].split()
+        
+        try:
+            if len(tokens)>0:
+                if tokens[0] == "statistics" and tokens[1] == "(manager)":
+                    offset = i
+                if len(tokens)>2:
+                    #total not 0
+                    if int(tokens[4]) != 0:
+                        elements = elements + 1
+        except:
+            dummy = 0
+    
+    
+    head = ["name", "now", "max", "total"]
+    data = []
+    for i in range(elements):    
+        data.append(["-"])
+
+
+    for i in range(elements):     
+        for j in range(3):
+            data[i].append("-")    
+    
+
+
+    print(len(data))    
+    
+    
+
+    k = 0
+    for i in range(end_of_block-proxy_table):    
+        tokens = lines[proxy_table+offset+i+1].split()
+        try: 
+            if len(tokens)>3:
+                
+                
+                data[k][0] = tokens[0]
+                
+                if int(tokens[4]) == 0:
+                    continue
+                    
+
+                for j in range(len(tokens)-1):
+                    if tokens[j] == "now":
+                        data[k][1] = tokens[j+1]
+                
+                    if tokens[j] == "max":
+                        data[k][2] = tokens[j+1]                
+
+                    if tokens[j] == "total":
+                        data[k][3] = tokens[j+1]
+            
+                k = k +1            
+
+                         
+                
+                    
+        except:
+            dummy = 0
+            #print("jump! sys_proxy_table")
+
+    
+    tuples = []
+    for i in range(elements-1):
+            tuples.append((i,data[i][3]))
+
+
+    #sort tuples
+    data_sorted = sorted(tuples, key=lambda x: int(x[1]))
+    data_sorted.reverse()
+        
+
+    #recreate the sorted data table
+    data_sorted_table = []
+    for i in range(elements-1):
+        index = data_sorted[i][0]
+        data_sorted_table.append(data[index])        
+
+    
+    
+    
+
+    #other
+    elements2 = 0
+    for i in range(end_of_block-proxy_table):    
+        tokens = lines[proxy_table + i].split()
+        
+        try:
+            if len(tokens)>0:
+                if tokens[0] == "statistics" and tokens[1] == "(manager)":
+                    offset2 = i
+                if len(tokens) == 2:
+                    # not 0
+                    if int(tokens[1]) != 0:
+                        elements2 = elements2 + 1
+        except:
+            dummy = 0
+    
+    
+    head = ["name", "value"]
+    data2 = []
+    for i in range(elements2):    
+        data2.append(["-"])
+
+
+    for i in range(elements2):     
+        for j in range(1):
+            data2[i].append("-")       
+    
+    
+    k2 = 0
+    for i in range(end_of_block-proxy_table):    
+        tokens = lines[proxy_table+offset2+i+1].split()
+        try: 
+            if len(tokens) == 2:
+                
+                
+                data2[k2][0] = tokens[0]
+                
+                if int(tokens[1]) == 0:
+                    continue
+                    
+
+                data2[k2][1] = tokens[1]
+            
+                k2 = k2 +1            
+
+                         
+                
+                    
+        except:
+            dummy = 0
+            #print("jump! sys_proxy_table")    
+    
+    
+
+    tuples2 = []
+    for i in range(elements2-1):
+            print(i)
+            tuples2.append((i,data2[i][1]))
+
+
+    #sort tuples
+    data_sorted2 = sorted(tuples2, key=lambda x: int(x[1]))
+    data_sorted2.reverse()
+        
+
+    #recreate the sorted data table
+    data_sorted_table2 = []
+    for i in range(elements2-1):
+        index = data_sorted2[i][0]
+        data_sorted_table2.append(data2[index])       
+    
+
+    outputfile.write("\n")
+    outputfile.write("\n")
+    outputfile.write("### diagnose sys proxy stats all")
+    outputfile.write("\n")
+    outputfile.write("\n")        
+    outputfile.write(tabulate(data_sorted_table,headers=head,tablefmt="grid"))
+    outputfile.write("\n")  
+    outputfile.write("\n")  
+    outputfile.write("\n") 
+    outputfile.write(tabulate(data_sorted_table2,headers=head,tablefmt="grid"))
+    outputfile.write("\n")  
+    outputfile.write("\n")          
+
+    return data
+
 def wad_t(wad_table, lines, end_of_block,outputfile):
     print("### diagnose wad memory sum")
 
-    
 
     elements = 0
     head = ["ID","allocs","frees","reallocs","avg_size","in_str","active","bytes","max","cmem object name"]   
@@ -923,12 +1122,11 @@ def conserve(block, lines, end_of_block, outputfile):
                     if tokens[j].split("=\"")[0] ==  "used":   
                         used = int(tokens[j].split("=\"")[1])
                         used_array.append(used)
-                        print("used " + str(used))
+
                         
                     if tokens[j].split("=\"")[0] ==  "red":                     
                         red = int(tokens[j].split("=\"")[1]) 
                         red_array.append(red)
-                        print("red "+ str(red))
                     
                     #pop last element so we only track conserve mode entered
                     if tokens[j] ==  "exits":                     
@@ -1347,6 +1545,9 @@ def sys_performance_status(sys_start_line, lines, end_of_block,outputfile):
 def find_blocks(filename):
 
 
+    global flag_a 
+    flag_a = True 
+
     file = open(filename,"r") 
     lines = file.readlines()    
     file.close()
@@ -1366,6 +1567,7 @@ def find_blocks(filename):
     sys_settings = []
     session_list = []
     performance_status = []
+    proxy_stats = []
     
     cmd_used_at = []
     
@@ -1435,7 +1637,9 @@ def find_blocks(filename):
                 if tokens[t] == "full-configuration" and tokens[t+1] == "system" and tokens[t+2] == "settings":
                     sys_settings.append(i)                        
             
-   
+                if tokens[t] == "proxy" and tokens[t+1] == "stats" and tokens[t+2] == "all":
+                    proxy_stats.append(i)   
+
         i = i+1
         
         
@@ -1621,6 +1825,20 @@ def find_blocks(filename):
         outputfile.write("diagnose wad memory sum not found or empty")         
         outputfile.write("\n")
 
+
+    #diagnose sys proxy stats all
+    if len(proxy_stats)>0:
+        end_of_block = cmd_used_at.index(proxy_stats[0])
+        if end_of_block == len(cmd_used_at)-1:        
+            proxy_stats_table = proxy_stats_all(proxy_stats,lines,i,outputfile)
+        else:
+            proxy_stats_table = proxy_stats_all(proxy_stats[0],lines,cmd_used_at[end_of_block+1], outputfile)        
+
+    if len(proxy_stats) == 0:
+        outputfile.write("\n")
+        outputfile.write("diagnose sys proxy stats all not found or empty")         
+        outputfile.write("\n")
+
 ##########################
 ############## CPU ######
 ##########################
@@ -1685,7 +1903,7 @@ def find_blocks(filename):
         outputfile.write("\n")   
 
 
-
+    
     outputfile.close()
    
    
@@ -1697,7 +1915,8 @@ def find_blocks(filename):
 
 #    find_blocks(sys.argv[1])
 
-find_blocks("diag_session_list.txt")
+find_blocks("afterconserve.txt")
+
 
 
 
