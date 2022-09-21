@@ -1,12 +1,12 @@
 #Author
 #desc
 #docstrings
-#github
+
 #kommentare
 
 #manual für installation und flags
 
-#github test
+
 
 ################
 #ROBUSTHEIT
@@ -54,7 +54,7 @@
 
 
 #IPS engine und ips session: wenn eine einzelne IPS engine hoch ist und ein ein einzelner IPS Session wert viel mem verbruacht -> vermutlich gleiche PID
-
+#IPS engine version
 
 #(optinal. nicht klar wie viel man da rauslesen kann)ROLLUP   diagnose sys top-mem detail 
 
@@ -219,7 +219,7 @@ def proxy_stats_all(proxy_table, lines, end_of_block,outputfile):
     dummy = 0
     
     elements = 0
-        
+    offset = 0    
     #For now - max - total
     for i in range(end_of_block-proxy_table):    
         tokens = lines[proxy_table + i].split()
@@ -287,7 +287,7 @@ def proxy_stats_all(proxy_table, lines, end_of_block,outputfile):
     
     tuples = []
     for i in range(elements-1):
-            tuples.append((i,data[i][3]))
+            tuples.append((i,data[i][1]))
 
 
     #sort tuples
@@ -307,6 +307,7 @@ def proxy_stats_all(proxy_table, lines, end_of_block,outputfile):
 
     #other
     elements2 = 0
+    offset2 = 0
     for i in range(end_of_block-proxy_table):    
         tokens = lines[proxy_table + i].split()
         
@@ -322,7 +323,7 @@ def proxy_stats_all(proxy_table, lines, end_of_block,outputfile):
             dummy = 0
     
     
-    head = ["name", "value"]
+    head2 = ["name", "value"]
     data2 = []
     for i in range(elements2):    
         data2.append(["-"])
@@ -386,7 +387,7 @@ def proxy_stats_all(proxy_table, lines, end_of_block,outputfile):
     outputfile.write("\n")  
     outputfile.write("\n")  
     outputfile.write("\n") 
-    outputfile.write(tabulate(data_sorted_table2,headers=head,tablefmt="grid"))
+    outputfile.write(tabulate(data_sorted_table2,headers=head2,tablefmt="grid"))
     outputfile.write("\n")  
     outputfile.write("\n")          
 
@@ -1548,7 +1549,7 @@ def find_blocks(filename):
     global flag_a 
     flag_a = True 
 
-    file = open(filename,"r") 
+    file = open(filename,"r", encoding='cp850') 
     lines = file.readlines()    
     file.close()
 
@@ -1632,6 +1633,9 @@ def find_blocks(filename):
                     mig.append(i)                     
 
                 if tokens[t] == "wad" and tokens[t+1] == "memory" and tokens[t+2] == "sum":
+                    wad_table.append(i)
+                    
+                if tokens[t] == "application" and tokens[t+1] == "wad" and tokens[t+2] == "803":
                     wad_table.append(i)
                            
                 if tokens[t] == "full-configuration" and tokens[t+1] == "system" and tokens[t+2] == "settings":
@@ -1826,18 +1830,7 @@ def find_blocks(filename):
         outputfile.write("\n")
 
 
-    #diagnose sys proxy stats all
-    if len(proxy_stats)>0:
-        end_of_block = cmd_used_at.index(proxy_stats[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            proxy_stats_table = proxy_stats_all(proxy_stats,lines,i,outputfile)
-        else:
-            proxy_stats_table = proxy_stats_all(proxy_stats[0],lines,cmd_used_at[end_of_block+1], outputfile)        
 
-    if len(proxy_stats) == 0:
-        outputfile.write("\n")
-        outputfile.write("diagnose sys proxy stats all not found or empty")         
-        outputfile.write("\n")
 
 ##########################
 ############## CPU ######
@@ -1902,6 +1895,18 @@ def find_blocks(filename):
         outputfile.write("diag sys session list not found") 
         outputfile.write("\n")   
 
+    #diagnose sys proxy stats all
+    if len(proxy_stats)>0:
+        end_of_block = cmd_used_at.index(proxy_stats[0])
+        if end_of_block == len(cmd_used_at)-1:        
+            proxy_stats_table = proxy_stats_all(proxy_stats,lines,i,outputfile)
+        else:
+            proxy_stats_table = proxy_stats_all(proxy_stats[0],lines,cmd_used_at[end_of_block+1], outputfile)        
+
+    if len(proxy_stats) == 0:
+        outputfile.write("\n")
+        outputfile.write("diagnose sys proxy stats all not found or empty")         
+        outputfile.write("\n")
 
     
     outputfile.close()
@@ -1915,7 +1920,7 @@ def find_blocks(filename):
 
 #    find_blocks(sys.argv[1])
 
-find_blocks("afterconserve.txt")
+find_blocks("console-803.txt")
 
 
 
