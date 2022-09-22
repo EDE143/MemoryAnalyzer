@@ -184,6 +184,7 @@ import math
 from tabulate import tabulate
 import sys
 from collections import Counter
+from _ast import Try
 
 
 def sys_set(sys_set_start_line, lines, end_of_block):
@@ -526,7 +527,7 @@ def miglogd(mig_start_line, lines, end_of_block,outputfile):
     print(lines[mig_start_line[0]])
     outputfile.write("\n") 
     outputfile.write("\n") 
-    outputfile.write("diagnose test application miglogd 6")
+    outputfile.write("### diagnose test application miglogd 6")
     outputfile.write("\n") 
     outputfile.write("\n") 
     
@@ -594,7 +595,7 @@ def ips_s(ips_start_line, lines, end_of_block,outputfile):
             
 
 def slab(slab_start_line, lines, end_of_block,outputfile):
-    print("TOP SLAB USAGE")
+    print("### diagnose hardware sysinfo slab")
     print(lines[slab_start_line[0]])
     
     offset = 0
@@ -677,7 +678,7 @@ def slab(slab_start_line, lines, end_of_block,outputfile):
     
 
 
-    outputfile.write("TOP SLAB USAGE")
+    outputfile.write("### diagnose hardware sysinfo slab")
     outputfile.write("\n")    
     outputfile.write(tabulate(data_sorted_table,headers=head,tablefmt="grid"))
     outputfile.write("\n")   
@@ -701,19 +702,41 @@ def mem_overview(mem_start_line, lines, end_of_block,outputfile):
     for i in range(usefull_values):     
         for j in range(1):
             data[i].append("dummy")
+
+    
+    
+    
+    data_full = []
+    for i in range(32):    
+        data_full.append(["dummy"])
+
+    for i in range(32):     
+        for j in range(1):
+            data_full[i].append(["dummy"])   
     
     
     table_iter = 0
+    j = 0
     for i in range(end_of_block-mem_start_line[0]-1):    
         tokens = lines[mem_start_line[0]+i].split()  
 
         if len(tokens)>0:
-                  
+
             if tokens[0] == "MemTotal:":
                 data[table_iter][0] = "MemTotal"
                 data[table_iter][1] = str(tokens[1]) + " " + str(tokens[2])
                 Memtotal = tokens[1]
                 table_iter = table_iter + 1
+                j = 0
+
+
+            try:
+                data_full[j][0] = str(tokens[0])
+                data_full[j][1] = str(tokens[1])
+                j = j +1          
+            except:
+                print("jump! mem")
+                        
              
             if tokens[0] == "MemFree:":
                 data[table_iter][0] = "MemFree"
@@ -755,7 +778,7 @@ def mem_overview(mem_start_line, lines, end_of_block,outputfile):
             
     head = ["Name", "Size"]          
     
-    outputfile.write("diagnose hardware sysinfo memory")
+    outputfile.write("### diagnose hardware sysinfo memory")
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
     outputfile.write("\n") 
@@ -765,7 +788,7 @@ def mem_overview(mem_start_line, lines, end_of_block,outputfile):
     outputfile.write("\n")  
     outputfile.write("\n")
     
-    return data
+    return data_full
     
     
     
@@ -820,7 +843,7 @@ def shm(shm_occurances, lines, end_of_block, outputfile):
     head = ["Name", "Size"]          
     #print(tabulate(data,headers=head,tablefmt="grid"))  
 
-    outputfile.write("USAGE OF /DEV/SHM")
+    outputfile.write("#### /DEV/SHM")
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
     outputfile.write("\n")   
@@ -878,7 +901,7 @@ def tmp(tmp_occurances, lines, end_of_block,outputfile):
     #print(tabulate(data,headers=head,tablefmt="grid"))  
 
 
-    outputfile.write("USAGE OF /DEV/TMP")
+    outputfile.write("###  /DEV/TMP")
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
     outputfile.write("\n")   
@@ -935,7 +958,7 @@ def cmdb(cmdb_occurances, lines, end_of_block,outputfile):
             
     head = ["Name", "Size"]          
 
-    outputfile.write("USAGE OF /DEV/CMDB")
+    outputfile.write("###  /DEV/CMDB")
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
     outputfile.write("\n")   
@@ -1021,7 +1044,7 @@ def sys_top(blocks, lines, end_of_block,outputfile):
 
 
 
-    outputfile.write("SYS TOP MEMORY / SYS TOP ALL MEMORY")
+    outputfile.write("### SYS TOP MEMORY / SYS TOP ALL MEMORY")
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
     outputfile.write("\n")   
@@ -1077,7 +1100,7 @@ def general_system_information(gen_start_line, lines, end_of_block,outputfile):
              
     
     
-    outputfile.write("GENERAL DEVICE INFORMATION")
+    outputfile.write("### GENERAL DEVICE INFORMATION")
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
     outputfile.write("\n")   
@@ -1085,11 +1108,11 @@ def general_system_information(gen_start_line, lines, end_of_block,outputfile):
     outputfile.write("\n")          
             
 
-def conserve(block, lines, end_of_block, outputfile):
+def conserve(block, lines, end_of_block, outputfile, data_mem_overview):
     print("CONSERVE MODE ENTERED")
     
-    
-    head = ["Name, ProcessID"]   
+    MB = 1000
+    head = ["Name","current"]   
     current_block = []
     red_array = []
     used_array = []
@@ -1118,7 +1141,6 @@ def conserve(block, lines, end_of_block, outputfile):
                     elements = elements + 1 
                 
                 for j in range(len(tokens)-1):
-                    #if (tokens[j] == "service=kernel" and tokens[j+1] == "conserve=on"):
                     
                     if tokens[j].split("=\"")[0] ==  "used":   
                         used = int(tokens[j].split("=\"")[1])
@@ -1157,28 +1179,51 @@ def conserve(block, lines, end_of_block, outputfile):
     
     data = []
     for i in range(elements):    
-        data.append(["dummy"])
+        data.append(["-"])
          
     
     print(len(current_block)+1) 
-    for i in range(len(current_block)):  
+    for i in range(len(current_block)+1):  
         for i in range(elements):             
-            data[i].append("dummy")
+            data[i].append("-")
         
 
-    for i in range(elements):
-        tokens = lines[block + current_block[0]+i+1].split() 
-        print(tokens)
-        data[i][0] = tokens[3]   
+  
+    #current usage of the device from ### get hardware memory
+    try:
+        for i in range(len(data_mem_overview)):
+            data[i][1] = str(int(data_mem_overview[i][1])/MB) + " MB" 
+    except:
+        print("### get hardware memory not found")    
         
+    #copy names into table
+    for i in range(elements):
+        tokens = lines[block + current_block[0]+i+1].split()       
+        data[i][0] = tokens[3]   
+
+    #copy elements into table    
     for j in range(len(current_block)):
         for i in range(elements):
             tokens = lines[block + current_block[j]+i+1].split() 
-            data[i][j+1] = tokens[4]
+            
+            # diagnose hardware sysinfo memory exists
+            try:
+                comparison = (int(tokens[4]) - int(data_mem_overview[i][1]))/MB               
+                if comparison >= int(0):
+                    data[i][j+2]  = str(int(tokens[4])/MB) +" MB"  + " (+"+ str(comparison) +" MB)"
+
+                if comparison < 0:
+                    data[i][j+2]  = str(int(tokens[4])/MB) +" MB"  + " ("+ str(comparison) +" MB)"
+            
+            # diagnose hardware sysinfo memory does not exists
+            except:
+                data[i][j+2] = tokens[4]
                       
 
 
-    outputfile.write("CONSERVE MODE ENTERED")
+
+
+    outputfile.write("### diagnose debug crashlog read")
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
     outputfile.write("\n")
@@ -1263,7 +1308,7 @@ def sys_top_cpu(blocks, lines, end_of_block,outputfile):
 
 
 
-    outputfile.write("SYS TOP CPU / SYS TOP ALL CPU")
+    outputfile.write("### SYS TOP CPU / SYS TOP ALL CPU")
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
     outputfile.write("\n")   
@@ -1465,7 +1510,7 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
     outputfile.write("\n")
     outputfile.write("session list table")
     outputfile.write("\n")
-    outputfile.write("diag sys session list")        
+    outputfile.write("### diag sys session list")        
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
     outputfile.write("\n")
@@ -1492,7 +1537,7 @@ def sys_performance_status(sys_start_line, lines, end_of_block,outputfile):
     print("get system performance status")
     outputfile.write("\n") 
     outputfile.write("\n") 
-    outputfile.write("get sys performance status")
+    outputfile.write("### get sys performance status")
     outputfile.write("\n") 
     outputfile.write("\n") 
     
@@ -1697,6 +1742,7 @@ def find_blocks(filename):
         outputfile.write("\n") 
             
     #diagnose hardware sysinfo memory
+    data_mem_overview = []
     if len(mem_overv)>0:
         end_of_block = cmd_used_at.index(mem_overv[0])
         if end_of_block == len(cmd_used_at)-1:        
@@ -1714,9 +1760,9 @@ def find_blocks(filename):
     if len(crashlogs)>0:
         end_of_block = cmd_used_at.index(crashlogs[0])        
         if end_of_block == len(cmd_used_at)-1:
-            conserve(crashlogs[0],lines,i, outputfile)
+            conserve(crashlogs[0],lines,i, outputfile, data_mem_overview)
         else:
-            conserve(crashlogs[0],lines,cmd_used_at[end_of_block+1], outputfile)            
+            conserve(crashlogs[0],lines,cmd_used_at[end_of_block+1], outputfile, data_mem_overview)            
 
     if len(crashlogs) == 0: 
         outputfile.write("\n")   
@@ -1913,14 +1959,14 @@ def find_blocks(filename):
    
    
    
-#if __name__ == "__main__":
-#    print(f"Arguments count: {len(sys.argv)}")
-#    for i, arg in enumerate(sys.argv):
-#        print(f"Argument {i:>6}: {arg}")
+if __name__ == "__main__":
+    print(f"Arguments count: {len(sys.argv)}")
+    for i, arg in enumerate(sys.argv):
+        print(f"Argument {i:>6}: {arg}")
 
-#    find_blocks(sys.argv[1])
+    find_blocks(sys.argv[1])
 
-find_blocks("console-803.txt")
+#find_blocks("hrv1-fw-p001-fgt.txt")
 
 
 
