@@ -180,6 +180,7 @@
 #import numpy as np
 
 import math
+import traceback
 
 from tabulate import tabulate
 import sys
@@ -189,8 +190,6 @@ from _ast import Try
 
 def sys_set(sys_set_start_line, lines, end_of_block):
     print("IPS SESSIONS")
-    print(lines[sys_set_start_line[0]])
-    
 
 
     table_iter = 0
@@ -249,9 +248,6 @@ def proxy_stats_all(proxy_table, lines, end_of_block,outputfile):
     
 
 
-    print(len(data))    
-    
-    
 
     k = 0
     for i in range(end_of_block-proxy_table):    
@@ -363,7 +359,6 @@ def proxy_stats_all(proxy_table, lines, end_of_block,outputfile):
 
     tuples2 = []
     for i in range(elements2-1):
-            print(i)
             tuples2.append((i,data2[i][1]))
 
 
@@ -1063,6 +1058,7 @@ def general_system_information(gen_start_line, lines, end_of_block,outputfile):
     head = ["Name", "value"]
     data = []
 
+
     table_iter = 0
     for i in range(end_of_block-gen_start_line[0]-1):    
         tokens = lines[gen_start_line[0]+i].split()  
@@ -1616,7 +1612,16 @@ def find_blocks(filename):
     proxy_stats = []
     
     cmd_used_at = []
-    
+
+
+    #delete empty cmd lines
+    i = 0
+    for line in lines:
+        tokens = line.split()
+        if len(tokens) == 2 and tokens[1] == "#":
+            del lines[i]
+  
+        i = i + 1        
 
 
     
@@ -1627,6 +1632,8 @@ def find_blocks(filename):
 
         len_tokens = len(tokens)
         for j in range(len(tokens)):
+            
+
             
             if tokens[j] == "diag" or tokens[j] == "diagnose" or tokens[j] == "get" or tokens[j] == "fnsysctl" or tokens[j] == "exec" or tokens[j] == "show" or tokens[j] == "de" or tokens[j] == "di":
                 cmd_used_at.append(i)
@@ -1715,167 +1722,331 @@ def find_blocks(filename):
 
     
     #get system status
-    if len(general_system_lines)>0:
-        end_of_block = cmd_used_at.index(general_system_lines[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            general_system_information(general_system_lines,lines,i,outputfile)       
-        else:
-            general_system_information(general_system_lines,lines,cmd_used_at[end_of_block+1], outputfile)      
-
-    if len(general_system_lines) == 0: 
+    try: 
+        if len(general_system_lines)>0:
+            end_of_block = cmd_used_at.index(general_system_lines[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                general_system_information(general_system_lines,lines,i,outputfile)       
+            else:
+                general_system_information(general_system_lines,lines,cmd_used_at[end_of_block+1], outputfile)      
+    
+        if len(general_system_lines) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("get system status not found") 
+            outputfile.write("\n")   
+    except Exception as e:
         outputfile.write("\n")   
-        outputfile.write("get system status not found") 
-        outputfile.write("\n")   
-
+        outputfile.write("#get system status failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")         
 
     #config system settings
-    if len(sys_settings)>0:       
-        end_of_block = cmd_used_at.index(sys_settings[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            settings = sys_set(sys_settings,lines,i)       
-        else:
-            settings = sys_set(sys_settings,lines,cmd_used_at[end_of_block+1])  
-
-    if len(sys_settings) == 0: 
+    try: 
+        if len(sys_settings)>0:       
+            end_of_block = cmd_used_at.index(sys_settings[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                settings = sys_set(sys_settings,lines,i)       
+            else:
+                settings = sys_set(sys_settings,lines,cmd_used_at[end_of_block+1])  
+    
+        if len(sys_settings) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("config system settings not found") 
+            outputfile.write("\n") 
+    except Exception as e:
         outputfile.write("\n")   
-        outputfile.write("config system settings not found") 
+        outputfile.write("#config system settings failed because:") 
         outputfile.write("\n") 
-            
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")   
+        
+        
+                   
     #diagnose hardware sysinfo memory
     data_mem_overview = []
-    if len(mem_overv)>0:
-        end_of_block = cmd_used_at.index(mem_overv[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            data_mem_overview = mem_overview(mem_overv,lines,i,outputfile)       
-        else:
-            data_mem_overview = mem_overview(mem_overv,lines,cmd_used_at[end_of_block+1], outputfile)                                
-
-    if len(mem_overv) == 0: 
+    try:
+        if len(mem_overv)>0:
+            end_of_block = cmd_used_at.index(mem_overv[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                data_mem_overview = mem_overview(mem_overv,lines,i,outputfile)       
+            else:
+                data_mem_overview = mem_overview(mem_overv,lines,cmd_used_at[end_of_block+1], outputfile)                                
+    
+        if len(mem_overv) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("diagnose hardware sysinfo memory not found") 
+            outputfile.write("\n")   
+        
+    except Exception as e:
         outputfile.write("\n")   
-        outputfile.write("diagnose hardware sysinfo memory not found") 
-        outputfile.write("\n")   
-
+        outputfile.write("#diagnose hardware sysinfo memory failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
 
     #diagnose debug crashlog read    
-    if len(crashlogs)>0:
-        end_of_block = cmd_used_at.index(crashlogs[0])        
-        if end_of_block == len(cmd_used_at)-1:
-            conserve(crashlogs[0],lines,i, outputfile, data_mem_overview)
-        else:
-            conserve(crashlogs[0],lines,cmd_used_at[end_of_block+1], outputfile, data_mem_overview)            
-
-    if len(crashlogs) == 0: 
-        outputfile.write("\n")   
-        outputfile.write("diagnose debug crashlog read not found") 
-        outputfile.write("\n")   
-
-    #diag sys top MEMORY
-    if len(sys_top_lines)>0:
-        for j in range(len(sys_top_lines)):                     
-            end_of_block = cmd_used_at.index(sys_top_lines[j])
-            if end_of_block == len(cmd_used_at)-1:            
-                data_sys_top = sys_top(sys_top_lines[j],lines,i,outputfile)
+    try:
+        if len(crashlogs)>0:
+            end_of_block = cmd_used_at.index(crashlogs[0])        
+            if end_of_block == len(cmd_used_at)-1:
+                conserve(crashlogs[0],lines,i, outputfile, data_mem_overview)
             else:
-                data_sys_top = sys_top(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)      
+                conserve(crashlogs[0],lines,cmd_used_at[end_of_block+1], outputfile, data_mem_overview)            
+    
+        if len(crashlogs) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("diagnose debug crashlog read not found") 
+            outputfile.write("\n")   
 
-    if len(sys_top_lines) == 0: 
+    except Exception as e:
         outputfile.write("\n")   
-        outputfile.write("diag sys top not found") 
+        outputfile.write("#diagnose debug crashlog read  failed because:") 
         outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
+        
+        
+    #diag sys top MEMORY
+    try:
+        if len(sys_top_lines)>0:
+            for j in range(len(sys_top_lines)):                     
+                end_of_block = cmd_used_at.index(sys_top_lines[j])
+                if end_of_block == len(cmd_used_at)-1:            
+                    data_sys_top = sys_top(sys_top_lines[j],lines,i,outputfile)
+                else:
+                    data_sys_top = sys_top(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)      
+    
+        if len(sys_top_lines) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("diag sys top not found") 
+            outputfile.write("\n") 
+
+    except Exception as e:
+        outputfile.write("\n")   
+        outputfile.write("#diag sys top MEMORY failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
 
     # /DEV/CMDB
-    if len(cmdb_occurances)>0:
-        end_of_block = cmd_used_at.index(cmdb_occurances[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            cmdb(cmdb_occurances,lines,i,outputfile)
-        else:
-            cmdb(cmdb_occurances,lines,cmd_used_at[end_of_block+1], outputfile)        
+    try: 
+        if len(cmdb_occurances)>0:
+            end_of_block = cmd_used_at.index(cmdb_occurances[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                cmdb(cmdb_occurances,lines,i,outputfile)
+            else:
+                cmdb(cmdb_occurances,lines,cmd_used_at[end_of_block+1], outputfile)        
+    
+        if len(cmdb_occurances) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("/DEV/CMDB not found") 
+            outputfile.write("\n")     
 
-    if len(cmdb_occurances) == 0: 
+    except Exception as e:
         outputfile.write("\n")   
-        outputfile.write("/DEV/CMDB not found") 
-        outputfile.write("\n")     
+        outputfile.write("# /DEV/CMDB failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
         
     # /TMP         
-    if len(tmp_occurances)>0:
-        end_of_block = cmd_used_at.index(tmp_occurances[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            tmp(tmp_occurances,lines,i,outputfile)
-        else:
-            tmp(tmp_occurances,lines,cmd_used_at[end_of_block+1], outputfile)        
+    try:
+        if len(tmp_occurances)>0:
+            end_of_block = cmd_used_at.index(tmp_occurances[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                tmp(tmp_occurances,lines,i,outputfile)
+            else:
+                tmp(tmp_occurances,lines,cmd_used_at[end_of_block+1], outputfile)        
+    
+        if len(tmp_occurances) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("/TMP not found") 
+            outputfile.write("\n")     
 
-    if len(tmp_occurances) == 0: 
+    except Exception as e:
         outputfile.write("\n")   
-        outputfile.write("/TMP not found") 
-        outputfile.write("\n")     
+        outputfile.write("# /TMP failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
 
     # /DEV/SHM        
-    if len(shm_occurances)>0:
-        end_of_block = cmd_used_at.index(shm_occurances[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            shm(shm_occurances,lines,i,outputfile)
-        else:
-            shm(shm_occurances,lines,cmd_used_at[end_of_block+1], outputfile)        
-     
-    if len(shm_occurances) == 0: 
+    try: 
+        if len(shm_occurances)>0:
+            end_of_block = cmd_used_at.index(shm_occurances[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                shm(shm_occurances,lines,i,outputfile)
+            else:
+                shm(shm_occurances,lines,cmd_used_at[end_of_block+1], outputfile)        
+         
+        if len(shm_occurances) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("/DEV/SHM not found") 
+            outputfile.write("\n")     
+ 
+    except Exception as e:
         outputfile.write("\n")   
-        outputfile.write("/DEV/SHM not found") 
-        outputfile.write("\n")     
-     
+        outputfile.write("# /DEV/SHM  failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")      
      
     #diagnose hardware sysinfo slab   
-    if len(slabinfo)>0:
-        end_of_block = cmd_used_at.index(slabinfo[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            slab(slabinfo,lines,i,outputfile)
-        else:
-            slab(slabinfo,lines,cmd_used_at[end_of_block+1], outputfile)        
-    
-    if len(slabinfo) == 0: 
+    try:
+        if len(slabinfo)>0:
+            end_of_block = cmd_used_at.index(slabinfo[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                slab(slabinfo,lines,i,outputfile)
+            else:
+                slab(slabinfo,lines,cmd_used_at[end_of_block+1], outputfile)        
+        
+        if len(slabinfo) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("diagnose hardware sysinfo slab not found") 
+            outputfile.write("\n")
+
+    except Exception as e:
         outputfile.write("\n")   
-        outputfile.write("diagnose hardware sysinfo slab not found") 
-        outputfile.write("\n")
+        outputfile.write("#diagnose hardware sysinfo slab failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
         
     #get ips session
-    if len(ips_session)>0:
-        end_of_block = cmd_used_at.index(ips_session[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            ips_s(ips_session,lines,i,outputfile)
-        else:
-            ips_s(ips_session,lines,cmd_used_at[end_of_block+1], outputfile)        
-    
-    if len(ips_session) == 0:
-        outputfile.write("\n")
-        outputfile.write("get ips session not found")   
-        outputfile.write("\n")
+    try:
+        if len(ips_session)>0:
+            end_of_block = cmd_used_at.index(ips_session[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                ips_s(ips_session,lines,i,outputfile)
+            else:
+                ips_s(ips_session,lines,cmd_used_at[end_of_block+1], outputfile)        
+        
+        if len(ips_session) == 0:
+            outputfile.write("\n")
+            outputfile.write("get ips session not found")   
+            outputfile.write("\n")
+
+    except Exception as e:
+        outputfile.write("\n")   
+        outputfile.write("#get ips session failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
           
     #diagnose test application miglogd 6
-    if len(mig)>0:
-        end_of_block = cmd_used_at.index(mig[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            miglogd(mig,lines,i,outputfile)
-        else:
-            miglogd(mig,lines,cmd_used_at[end_of_block+1], outputfile)        
+    try:
+        if len(mig)>0:
+            end_of_block = cmd_used_at.index(mig[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                miglogd(mig,lines,i,outputfile)
+            else:
+                miglogd(mig,lines,cmd_used_at[end_of_block+1], outputfile)        
+    
+        if len(mig) == 0:
+            outputfile.write("\n")
+            outputfile.write("diagnose test application miglogd 6 not found") 
+            outputfile.write("\n")
 
-    if len(mig) == 0:
-        outputfile.write("\n")
-        outputfile.write("diagnose test application miglogd 6 not found") 
-        outputfile.write("\n")
+    except Exception as e:
+        outputfile.write("\n")   
+        outputfile.write("#diagnose test application miglogd 6 failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
         
     #diagnose wad memory sum
-    if len(wad_table)>0:
-        end_of_block = cmd_used_at.index(wad_table[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            wad_data_table = wad_t(wad_table,lines,i,outputfile)
-        else:
-            wad_data_table = wad_t(wad_table[0],lines,cmd_used_at[end_of_block+1], outputfile)        
+    try:
+        if len(wad_table)>0:
+            end_of_block = cmd_used_at.index(wad_table[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                wad_data_table = wad_t(wad_table,lines,i,outputfile)
+            else:
+                wad_data_table = wad_t(wad_table[0],lines,cmd_used_at[end_of_block+1], outputfile)        
+    
+        if len(wad_table) == 0:
+            outputfile.write("\n")
+            outputfile.write("diagnose wad memory sum not found or empty")         
+            outputfile.write("\n")
 
-    if len(wad_table) == 0:
-        outputfile.write("\n")
-        outputfile.write("diagnose wad memory sum not found or empty")         
-        outputfile.write("\n")
-
-
+    except Exception as e:
+        outputfile.write("\n")   
+        outputfile.write("#diagnose wad memory sum failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")              
 
 
 ##########################
@@ -1900,73 +2071,126 @@ def find_blocks(filename):
     
     #get system performance status
     #perf_data = [%irq, %softirqs]
-    if len(performance_status)>0:
-        end_of_block = cmd_used_at.index(performance_status[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            perf_data = sys_performance_status(performance_status,lines,i,outputfile)       
-        else:
-            perf_data = sys_performance_status(performance_status,lines,cmd_used_at[end_of_block+1], outputfile)      
-            
-        print(perf_data)
-    if len(performance_status) == 0: 
-        outputfile.write("\n")   
-        outputfile.write("get system performance status not found") 
-        outputfile.write("\n")       
+    try:
+        if len(performance_status)>0:
+            end_of_block = cmd_used_at.index(performance_status[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                perf_data = sys_performance_status(performance_status,lines,i,outputfile)       
+            else:
+                perf_data = sys_performance_status(performance_status,lines,cmd_used_at[end_of_block+1], outputfile)      
+                
+            #print(perf_data)
+        if len(performance_status) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("get system performance status not found") 
+            outputfile.write("\n")       
     
+    except Exception as e:
+        outputfile.write("\n")   
+        outputfile.write("#get system performance status failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
     
     #diag sys top
-    if len(sys_top_lines)>0:
-        for j in range(len(sys_top_lines)):                     
-            end_of_block = cmd_used_at.index(sys_top_lines[j])
-            if end_of_block == len(cmd_used_at)-1:            
-                data_sys_top_cpu = sys_top_cpu(sys_top_lines[j],lines,i,outputfile)
-            else:
-                data_sys_top_cpu = sys_top_cpu(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)        
+    try:
+        if len(sys_top_lines)>0:
+            for j in range(len(sys_top_lines)):                     
+                end_of_block = cmd_used_at.index(sys_top_lines[j])
+                if end_of_block == len(cmd_used_at)-1:            
+                    data_sys_top_cpu = sys_top_cpu(sys_top_lines[j],lines,i,outputfile)
+                else:
+                    data_sys_top_cpu = sys_top_cpu(sys_top_lines[j],lines,cmd_used_at[end_of_block+1], outputfile)        
+    
+        if len(sys_top_lines) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("diag sys top not found") 
+            outputfile.write("\n") 
 
-    if len(sys_top_lines) == 0: 
+    except Exception as e:
         outputfile.write("\n")   
-        outputfile.write("diag sys top not found") 
+        outputfile.write("#diag sys top failed because:") 
         outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n")
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
 
     #diag sys session list
-    if len(session_list)>0:
-        end_of_block = cmd_used_at.index(session_list[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            diag_session_list(session_list[0],lines,i,outputfile)       
-        else:
-            diag_session_list(session_list[0],lines,cmd_used_at[end_of_block+1], outputfile)      
+    try:
+        if len(session_list)>0:
+            end_of_block = cmd_used_at.index(session_list[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                diag_session_list(session_list[0],lines,i,outputfile)       
+            else:
+                diag_session_list(session_list[0],lines,cmd_used_at[end_of_block+1], outputfile)      
+    
+        if len(session_list) == 0: 
+            outputfile.write("\n")   
+            outputfile.write("diag sys session list not found") 
+            outputfile.write("\n")   
 
-    if len(session_list) == 0: 
+    except Exception as e:
         outputfile.write("\n")   
-        outputfile.write("diag sys session list not found") 
-        outputfile.write("\n")   
+        outputfile.write("#diag sys session list failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
 
     #diagnose sys proxy stats all
-    if len(proxy_stats)>0:
-        end_of_block = cmd_used_at.index(proxy_stats[0])
-        if end_of_block == len(cmd_used_at)-1:        
-            proxy_stats_table = proxy_stats_all(proxy_stats,lines,i,outputfile)
-        else:
-            proxy_stats_table = proxy_stats_all(proxy_stats[0],lines,cmd_used_at[end_of_block+1], outputfile)        
-
-    if len(proxy_stats) == 0:
-        outputfile.write("\n")
-        outputfile.write("diagnose sys proxy stats all not found or empty")         
-        outputfile.write("\n")
-
+    try:
+        if len(proxy_stats)>0:
+            end_of_block = cmd_used_at.index(proxy_stats[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                proxy_stats_table = proxy_stats_all(proxy_stats,lines,i,outputfile)
+            else:
+                proxy_stats_table = proxy_stats_all(proxy_stats[0],lines,cmd_used_at[end_of_block+1], outputfile)        
+    
+        if len(proxy_stats) == 0:
+            outputfile.write("\n")
+            outputfile.write("diagnose sys proxy stats all not found or empty")         
+            outputfile.write("\n")
+        
+    except Exception as e:
+        outputfile.write("\n")   
+        outputfile.write("#diagnose sys proxy stats all because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")  
     
     outputfile.close()
    
    
    
-if __name__ == "__main__":
-    print(f"Arguments count: {len(sys.argv)}")
-    for i, arg in enumerate(sys.argv):
-        print(f"Argument {i:>6}: {arg}")
+#if __name__ == "__main__":
+#    print(f"Arguments count: {len(sys.argv)}")
+#    for i, arg in enumerate(sys.argv):
+#        print(f"Argument {i:>6}: {arg}")#
 
-    find_blocks(sys.argv[1])
+#    find_blocks(sys.argv[1])
 
-#find_blocks("hrv1-fw-p001-fgt.txt")
+find_blocks("NodeB.txt")
 
 
 
