@@ -320,7 +320,7 @@ def proxy_stats_all(proxy_table, lines, end_of_block,outputfile):
             dummy = 0
     
     
-    head2 = ["name", "value"]
+    head2 = ["name", "value (#usages)"]
     data2 = []
     for i in range(elements2):    
         data2.append(["-"])
@@ -593,10 +593,11 @@ def slab(slab_start_line, lines, end_of_block,outputfile):
     print("### diagnose hardware sysinfo slab")
     print(lines[slab_start_line[0]])
     
+    MB = 1000000
     offset = 0
     elements = 0
     slab_block_found = 0
-    head = ["Process", "active Objects", "number of Objects", "Object Size", "Objects per Slab", "pages per slab", ":", "tunables", "limit", "batch count", "shared count", ":", "slabdata", "active slabs", "number of slabs", "shared availabe", "min mem usage", "mem usage with int. fragmentation"]   
+    head = ["Process", "active Objects", "number of Objects", "Object Size", "Objects per Slab", "pages per slab", ":", "tunables", "limit", "batch count", "shared count", ":", "slabdata", "active slabs", "number of slabs", "shared availabe", "min mem usage (MB)", "mem usage with int. fragmentation"]   
 
     for i in range(end_of_block-slab_start_line[0]):    
         tokens = lines[slab_start_line[0]+i].split()
@@ -637,7 +638,7 @@ def slab(slab_start_line, lines, end_of_block,outputfile):
         #print(tokens)
         for j in range(16):
             data[i][j] = tokens[j]
-        data[i][16] = int(data[i][2]) * int(data[i][3])  
+        data[i][16] = int(data[i][2]) * int(data[i][3])/MB  
         
         
         #BUGGED! THESE NUMBERS DONT ADD UP, IT SHOULD ALWAYS BE GREATER THAN THE MIN MEM REQUIRED
@@ -651,7 +652,7 @@ def slab(slab_start_line, lines, end_of_block,outputfile):
         if elem_page == 0:
             data[i][17] = 0        
         else:
-            data[i][17] = int(int(data[i][2])/elem_page * 4096)           
+            data[i][17] = int(int(data[i][2])/elem_page * 4096)/MB           
 
     
     #print("len data " + str(len(data)))
@@ -791,7 +792,8 @@ def mem_overview(mem_start_line, lines, end_of_block,outputfile):
     
 def shm(shm_occurances, lines, end_of_block, outputfile):
     print("CALCULATING USAGE OF /DEV/SHM")
-    
+
+    MB = 1000000    
     shm_tuples = []
     #name im letzten token
     #größe im vorletzten token
@@ -799,7 +801,7 @@ def shm(shm_occurances, lines, end_of_block, outputfile):
         tokens = lines[shm_occurances[0]+i+1].split()
         try:
             if len(tokens)>0:
-                size = int(tokens[9])
+                size = int(tokens[9])/MB
                 name = tokens[10]
                 shm_tuples.append((name,size))
         except:
@@ -817,7 +819,7 @@ def shm(shm_occurances, lines, end_of_block, outputfile):
               cmdb_short.append(shm_tuples[i])
 
     #cmdb_short.append(("numbered_processes", int(size_numbered_processes))) 
-    cmdb_sorted = sorted(cmdb_short, key=lambda x: int(x[1]))
+    cmdb_sorted = sorted(cmdb_short, key=lambda x: float(x[1]))
     cmdb_sorted.reverse()
     
     data = []
@@ -835,7 +837,7 @@ def shm(shm_occurances, lines, end_of_block, outputfile):
         data[i][1] = cmdb_sorted[i][1]            
         
             
-    head = ["Name", "Size"]          
+    head = ["Name", "Size (MB)"]          
     #print(tabulate(data,headers=head,tablefmt="grid"))  
 
     outputfile.write("#### /DEV/SHM")
@@ -848,7 +850,7 @@ def shm(shm_occurances, lines, end_of_block, outputfile):
 def tmp(tmp_occurances, lines, end_of_block,outputfile):
     print("CALCULATING USAGE OF /DEV/TMP")
 
-
+    MB = 1000000    
     tmp_tuples = []
     #name im letzten token
     #größe im vorletzten token
@@ -857,6 +859,8 @@ def tmp(tmp_occurances, lines, end_of_block,outputfile):
         try:
             if len(tokens)>0:
                 size = int(tokens[9])
+                if size != 0:
+                    size = int(tokens[9])/MB
                 name = tokens[10]
                 tmp_tuples.append((name,size))
         except:
@@ -874,7 +878,7 @@ def tmp(tmp_occurances, lines, end_of_block,outputfile):
               cmdb_short.append(tmp_tuples[i])
 
     #cmdb_short.append(("numbered_processes", int(size_numbered_processes))) 
-    cmdb_sorted = sorted(cmdb_short, key=lambda x: int(x[1]))
+    cmdb_sorted = sorted(cmdb_short, key=lambda x: float(x[1]))
     cmdb_sorted.reverse()
     
     data = []
@@ -892,7 +896,7 @@ def tmp(tmp_occurances, lines, end_of_block,outputfile):
         data[i][1] = cmdb_sorted[i][1]            
         
             
-    head = ["Name", "Size"]          
+    head = ["Name", "Size (MB)"]          
     #print(tabulate(data,headers=head,tablefmt="grid"))  
 
 
@@ -907,7 +911,7 @@ def tmp(tmp_occurances, lines, end_of_block,outputfile):
 def cmdb(cmdb_occurances, lines, end_of_block,outputfile):
     print("CALCULATING USAGE OF /DEV/CMDB")
 
-
+    MB = 1000000
     cmdb_tuples = []
     #name im letzten token
     #größe im vorletzten token
@@ -915,7 +919,7 @@ def cmdb(cmdb_occurances, lines, end_of_block,outputfile):
         tokens = lines[cmdb_occurances[0]+i+1].split()
         try:
             if len(tokens)>0:
-                size = int(tokens[9])
+                size = float(tokens[9])/MB
                 name = tokens[10]
                 cmdb_tuples.append((name,size))
         except:
@@ -927,13 +931,13 @@ def cmdb(cmdb_occurances, lines, end_of_block,outputfile):
     cmdb_short = []
     for i in range(len(cmdb_tuples)):
         if(cmdb_tuples[i][0].isnumeric()) == True:
-            size_numbered_processes = size_numbered_processes + int(cmdb_tuples[i][1])
+            size_numbered_processes = size_numbered_processes + float(cmdb_tuples[i][1])
             
         if(cmdb_tuples[i][0].isnumeric()) == False: 
               cmdb_short.append(cmdb_tuples[i])
 
-    cmdb_short.append(("numbered_processes", int(size_numbered_processes))) 
-    cmdb_sorted = sorted(cmdb_short, key=lambda x: int(x[1]))
+    cmdb_short.append(("numbered_processes", float(size_numbered_processes))) 
+    cmdb_sorted = sorted(cmdb_short, key=lambda x: float(x[1]))
     cmdb_sorted.reverse()
     
     data = []
@@ -951,7 +955,7 @@ def cmdb(cmdb_occurances, lines, end_of_block,outputfile):
         data[i][1] = cmdb_sorted[i][1]            
         
             
-    head = ["Name", "Size"]          
+    head = ["Name", "Size (MB)"]          
 
     outputfile.write("###  /DEV/CMDB")
     outputfile.write("\n")    
@@ -1069,6 +1073,11 @@ def general_system_information(gen_start_line, lines, end_of_block,outputfile):
                     data.append([str(tokens[0])])
                     data[table_iter].append(str(tokens[1])+ " " + str(tokens[2]))
                     table_iter = table_iter + 1
+                    #get Version number for return value
+                    Version_number_array = tokens[2].split(".")
+                    Version_number_array[0] = Version_number_array[0][1]
+                    Version_number_array[2] = Version_number_array[0][0]                    
+
 
                 if tokens[0] == "Hostname:":
                     data.append([str(tokens[0])])
@@ -1102,17 +1111,19 @@ def general_system_information(gen_start_line, lines, end_of_block,outputfile):
     outputfile.write("\n")   
     outputfile.write("\n")  
     outputfile.write("\n")          
-            
+    return Version_number_array
 
 def conserve(block, lines, end_of_block, outputfile, data_mem_overview):
     print("CONSERVE MODE ENTERED")
     
+    threshold_missclac_timestamp = []
     MB = 1000
     head = ["Name","current"]   
     current_block = []
     red_array = []
     used_array = []
     elements = 0        #elements in block
+    elements_stop_counter = 0
     start = 0           #block is starting
     red = 0             #conserve mode consistency red threshold
     used = 1           #conserve mode consistency used total memory
@@ -1121,20 +1132,25 @@ def conserve(block, lines, end_of_block, outputfile, data_mem_overview):
 
         try: 
             if len(tokens)>0:
-                #print(tokens)
-                if tokens[3] == "MemTotal:":
+
+                for j in range(len(tokens)-1):
+                    if (tokens[j] == "mode" and tokens[j+1] == "entered\"") or (tokens[j] == "enters" and tokens[j+1] == "memory"):               
+                        start_block = 1 
+
+                if tokens[3] == "MemTotal:" and start_block == 1:
                     start = 1
                     red = 0
                     used = 1
                     current_block.append(i-1)
                     head.append(tokens[1] +" "+tokens[2])
             
-                if tokens[3] == "VmallocChunk:":
+                if tokens[3] == "VmallocChunk:" and start_block == 1:
                     start = 0
-
+                    elements_stop_counter = 1
+                    start_block = 0 
                     
-                if start == 1:
-                    elements = elements + 1 
+                if start == 1 and elements_stop_counter == 0:
+                    elements = elements + 1
                 
                 for j in range(len(tokens)-1):
                     
@@ -1146,6 +1162,7 @@ def conserve(block, lines, end_of_block, outputfile, data_mem_overview):
                     if tokens[j].split("=\"")[0] ==  "red":                     
                         red = int(tokens[j].split("=\"")[1]) 
                         red_array.append(red)
+                        threshold_missclac_timestamp.append(tokens[1] + " " + tokens[2])
                     
                     #pop last element so we only track conserve mode entered
                     if tokens[j] ==  "exits":                     
@@ -1153,9 +1170,7 @@ def conserve(block, lines, end_of_block, outputfile, data_mem_overview):
                         red_array.pop(-1)
                 
                                                                                       
-                for j in range(len(tokens)-1):
-                    if (tokens[j] == "mode" and tokens[j+1] == "entered\"") or (tokens[j] == "enters" and tokens[j+1] == "memory"):               
-                        elements = 0 
+
                    
 
 
@@ -1166,7 +1181,7 @@ def conserve(block, lines, end_of_block, outputfile, data_mem_overview):
 
     for i in range(len(used_array)):
         if used_array[i] < red_array[i]:
-            outputfile.write("BUG detected: conserve mode threshold was calculated wrong")
+            outputfile.write("BUG detected: conserve mode threshold was calculated wrong at " + str(threshold_missclac_timestamp[i]))
             outputfile.write("\n")                          
             outputfile.write("used: " + str(used_array[i]) + " vs red: " +str(red_array[i]))   
             outputfile.write("\n")  
@@ -1216,8 +1231,8 @@ def conserve(block, lines, end_of_block, outputfile, data_mem_overview):
                 data[i][j+2] = tokens[4]
                       
 
-
-
+    print("DATA")
+    print(elements)
 
     outputfile.write("### diagnose debug crashlog read")
     outputfile.write("\n")    
@@ -1726,9 +1741,9 @@ def find_blocks(filename):
         if len(general_system_lines)>0:
             end_of_block = cmd_used_at.index(general_system_lines[0])
             if end_of_block == len(cmd_used_at)-1:        
-                general_system_information(general_system_lines,lines,i,outputfile)       
+                Version_number_array = general_system_information(general_system_lines,lines,i,outputfile)       
             else:
-                general_system_information(general_system_lines,lines,cmd_used_at[end_of_block+1], outputfile)      
+                Version_number_array = general_system_information(general_system_lines,lines,cmd_used_at[end_of_block+1], outputfile)      
     
         if len(general_system_lines) == 0: 
             outputfile.write("\n")   
@@ -2190,7 +2205,7 @@ def find_blocks(filename):
 
 #    find_blocks(sys.argv[1])
 
-find_blocks("NodeB.txt")
+find_blocks("exec.tac.report.2022.08.22.txt")
 
 
 
