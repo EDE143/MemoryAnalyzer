@@ -105,6 +105,9 @@
 
 
 
+# diag sys session list
+# count of no_ofld_reason just like the gwy list for dirty sessions
+# this should give an indication where the problem is
 
 
 # diag sys proxy stats all
@@ -496,6 +499,147 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
 
 
     outputfile.write("### diagnose wad memory sum")
+    outputfile.write("\n")
+    outputfile.write("\n")        
+    outputfile.write(tabulate(data_sorted_table,headers=head,tablefmt="grid"))
+    outputfile.write("\n")
+    outputfile.write("\n")    
+    outputfile.write("leak found: "+ leak)       
+    outputfile.write("\n")  
+    outputfile.write("\n")      
+    
+    if alloc_bug != "":
+            outputfile.write("\n")    
+            outputfile.write("Wrong allocation found at: "+ leak)       
+            outputfile.write("\n")  
+            outputfile.write("check for more inconsistencies")    
+            outputfile.write("\n")  
+    return data_sorted_table
+
+
+def wad_all(wad_table, lines, end_of_block,outputfile):
+    print("### diagnose wad memory all")
+
+
+    #******* [type=worker pid=304 idx=0] *******
+    
+    elements = 0
+    head = ["ID","allocs","frees","reallocs","avg_size","in_str","active","bytes","max","cmem object name"]   
+    end_of_wad_block = 0 
+    
+
+    PID = []
+    blocks = []
+    
+    print(wad_table)
+    print(end_of_block)    
+    print(end_of_block-wad_table)
+    
+    for i in range(end_of_block-wad_table):    
+        tokens = lines[wad_table+i].split()
+        try: 
+            if len(tokens)>0:
+                #print(tokens)
+                
+                if tokens[2].split("=")[0] == "pid":
+                    PID.append(tokens[2].split("=")[1])
+                 
+                if end_of_wad_block == 0:
+                    elements = elements +1 
+                    
+                if tokens[0] == "id":
+                    elements = 0 
+                    offset = i
+                    blocks.append(i)
+                                      
+        except:
+            print("jump! wad_table_all")
+    
+
+    print("elements " +str(elements))
+
+
+    print("PID " +str(PID))
+    print("\n")
+    print("\n")
+    print("blocks " + str(blocks))
+
+    data = []
+    for i in range(elements-1):    
+        data.append(["-"])
+
+
+    for i in range(elements-1):     
+        for j in range(9):
+            data[i].append("-")
+    
+    
+    #fill matrix with data
+    block_found = 0
+    j = 0
+    leak = ""
+    alloc_bug = ""
+    for i in range(end_of_block-wad_table):    
+        tokens = lines[wad_table+i].split()
+        try: 
+            if len(tokens)>0:
+                if tokens[0] == "id":
+                    block_found = 1 
+                    j = 0
+                    continue
+                    
+            if len(tokens)>0 and block_found == 1:
+                data[j][0] = tokens[0]                  #id
+                data[j][1] = tokens[1]                  #allocs
+                data[j][2] = tokens[2]                  #frees
+                data[j][3] = tokens[3]                  #reallocs
+                data[j][4] = tokens[4]                  #avg_size
+                data[j][5] = tokens[5]                  #in_str
+                data[j][6] = tokens[6]                  #active
+                data[j][7] = tokens[7]                  #bytes
+                data[j][8] = tokens[8]                  #max
+                data[j][9] = tokens[9]                  #cmem object name
+                
+                #frees cannot exceed allocs
+                
+                if int(data[j][2]) > int(data[j][1]):
+                    alloc_bug = data[j][9]
+                
+                #check for obvious memory leak
+                if int(tokens[7]) < 0 or int(tokens[8]) < 0:
+                    leak = tokens[9]
+            j = j+1                        
+        except:
+            print("jump! wad_table")
+  
+    
+    if leak == "":
+        leak = "no obvious leak found, i.e. negative byte values"
+    
+    #create tuples used for sorting, first element is the key, the bytes column
+    tuples = []
+    for i in range(elements-1):
+            tuples.append((i,data[i][7]))
+
+
+    #sort tuples
+    data_sorted = sorted(tuples, key=lambda x: int(x[1]))
+    data_sorted.reverse()
+    
+    #recreate the sorted data table
+    data_sorted_table = []
+    for i in range(elements-1):
+        index = data_sorted[i][0]
+        data_sorted_table.append(data[index])    
+
+
+
+    data_sorted = sorted(tuples, key=lambda x: int(x[1]))
+    data_sorted.reverse()
+    
+
+
+    outputfile.write("### diagnose wad memory all")
     outputfile.write("\n")
     outputfile.write("\n")        
     outputfile.write(tabulate(data_sorted_table,headers=head,tablefmt="grid"))
@@ -1350,13 +1494,16 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
     for i in range(17):
         data[i][0] = i+1
         
-
+    no_ofld_reason = 0
     total_sessions = 0
     dirty_gwy = []
     for i in range(end_of_block-blocks):    
         tokens = lines[blocks+i].split()
         try: 
             if len(tokens)>0:
+                
+                if tokens[0] == "no_ofld_reason:" and len(tokens) == 1:
+                    no_ofld_reason = no_ofld_reason + 1
                 
                 if tokens[0] == "session" and tokens[1] == "info:":
                     proto = tokens[2].split("=")[1] 
@@ -1369,7 +1516,7 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
 
                     first_state = tokens[0].split("=")[1]
                     
-                    if first_state == "dirty":                   
+                    if first_state == "dirty":                          #done by the cpu
                         data[int_proto][1] = data[int_proto][1] + 1
                         dirty = 1
                                                     
@@ -1385,7 +1532,7 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
                     if first_state == "re":
                         data[int_proto][5] = data[int_proto][5] + 1
 
-                    if first_state == "ndr":
+                    if first_state == "ndr":                            # only nturbo
                         data[int_proto][6] = data[int_proto][6] + 1                               
                             
                     if first_state == "npu":
@@ -1400,7 +1547,7 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
                     if first_state == "br":
                         data[int_proto][10] = data[int_proto][10] + 1        
 
-                    if first_state == "redir":
+                    if first_state == "redir":                          # not offloaded
                         data[int_proto][11] = data[int_proto][11] + 1        
                     
                     if first_state == "wccp":
@@ -1415,7 +1562,7 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
                     if first_state == "rs":
                         data[int_proto][15] = data[int_proto][15] + 1   
                             
-                    if first_state == "auth":
+                    if first_state == "auth":                           # not offloaded
                         data[int_proto][16] = data[int_proto][16] + 1                               
                             
                     if first_state == "block":
@@ -1506,17 +1653,24 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
             print("jump! diag sys session list")
    
     
-    #sort sessions gwy
-    tuples = []
-    for i in range(len(dirty_gwy_count)):
-        key, value = dirty_gwy_count.popitem()  
-        print(value)
-        tuple = (key, value)
-        tuples.append(tuple) 
-              
-    tuples_sorted = sorted(tuples, key=lambda x: int(x[1]))
-    tuples_sorted.reverse()
     
+    #sort sessions gwy
+    try:
+        tuples = []
+        for i in range(len(dirty_gwy_count)):
+            key, value = dirty_gwy_count.popitem()  
+            print(value)
+            tuple = (key, value)
+            tuples.append(tuple) 
+                  
+        tuples_sorted = sorted(tuples, key=lambda x: int(x[1]))
+        tuples_sorted.reverse()
+    except Exception as e:
+        outputfile.write("\n")   
+        outputfile.write("sort sessions gwy failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
     
     outputfile.write("\n")
     outputfile.write("session list table")
@@ -1524,6 +1678,9 @@ def diag_session_list(blocks, lines, end_of_block,outputfile):
     outputfile.write("### diag sys session list")        
     outputfile.write("\n")    
     outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
+    outputfile.write("\n") 
+    outputfile.write("Sessions which are not offloaded: " + str(no_ofld_reason))
+    outputfile.write("\n")
     outputfile.write("\n")
     outputfile.write("TOTAL SESSIONS: "+ str(total_sessions))
     outputfile.write("\n")
@@ -1625,7 +1782,7 @@ def find_blocks(filename):
     session_list = []
     performance_status = []
     proxy_stats = []
-    
+    wad_table_all =[]
     cmd_used_at = []
 
 
@@ -1648,11 +1805,13 @@ def find_blocks(filename):
         len_tokens = len(tokens)
         for j in range(len(tokens)):
             
-
+            
             
             if tokens[j] == "diag" or tokens[j] == "diagnose" or tokens[j] == "get" or tokens[j] == "fnsysctl" or tokens[j] == "exec" or tokens[j] == "show" or tokens[j] == "de" or tokens[j] == "di":
-                cmd_used_at.append(i)
+                if tokens[j-1] == "#" or tokens[j-1] == "###":   #workaround for wad memory all - some cmem objects are called diag
+                    cmd_used_at.append(i)
 
+                
         
         if len(tokens) > 3:
             for t in range(len_tokens-1):
@@ -1701,6 +1860,9 @@ def find_blocks(filename):
 
                 if tokens[t] == "wad" and tokens[t+1] == "memory" and tokens[t+2] == "sum":
                     wad_table.append(i)
+
+                if tokens[t] == "wad" and tokens[t+1] == "memory" and tokens[t+2] == "all":
+                    wad_table_all.append(i)
                     
                 if tokens[t] == "application" and tokens[t+1] == "wad" and tokens[t+2] == "803":
                     wad_table.append(i)
@@ -2064,6 +2226,41 @@ def find_blocks(filename):
         outputfile.write("\n")              
 
 
+    #diagnose wad memory all
+    try:
+        if len(wad_table_all)>0:
+            end_of_block = cmd_used_at.index(wad_table_all[0])
+            print("wad " + str(cmd_used_at.index(wad_table_all[0])))
+            print(cmd_used_at)
+            print(str(wad_table_all[0]))
+            print(end_of_block)      
+            if end_of_block == len(cmd_used_at)-1:        
+                wad_data_table_all = wad_all(wad_table_all,lines,i,outputfile)
+            else:
+                wad_data_table_all = wad_all(wad_table_all[0],lines,cmd_used_at[end_of_block+1], outputfile)        
+    
+        if len(wad_table_all) == 0:
+            outputfile.write("\n")
+            outputfile.write("diagnose wad memory all not found or empty")         
+            outputfile.write("\n")
+
+    except Exception as e:
+        outputfile.write("\n")   
+        outputfile.write("#diagnose wad memory all failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")   
+
+
+
+
+
 ##########################
 ############## CPU ######
 ##########################
@@ -2205,7 +2402,7 @@ def find_blocks(filename):
 
 #    find_blocks(sys.argv[1])
 
-find_blocks("exec.tac.report.2022.08.22.txt")
+find_blocks("FG201FT921905883_debug.log")
 
 
 
