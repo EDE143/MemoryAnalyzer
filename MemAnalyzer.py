@@ -474,8 +474,6 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
             print("jump! wad_table")
   
     
-    if leak == "":
-        leak = "no obvious leak found, i.e. negative byte values"
     
     #create tuples used for sorting, first element is the key, the bytes column
     tuples = []
@@ -613,9 +611,7 @@ def wad_all(wad_table, lines, end_of_block,outputfile):
                 a=1     #dummy
                 #print("jump! wad_table")
       
-        
-        if leak == "":
-            leak = "no obvious leak found, i.e. negative byte values"
+
         
         #create tuples used for sorting, first element is the key, the bytes column
         tuples = []
