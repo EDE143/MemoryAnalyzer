@@ -95,8 +95,7 @@
 #CPU und Interrupts
 #interna S.63
 
-#Idee: Vorschläge ausgeben lassen. Beispiel: hoher cached wert und bei miglogd mem und disk erkannt -> abstellen
-#vllt eine art abgleich von symptomen und gelösten tickets. 
+
 
 
 #wad stats common | grep ses_ctx
@@ -120,10 +119,13 @@
 
 
 
+#7724437 CPU
+#7269917
+#5935363 loop
 
 
-
-
+# diag sys top
+# R and S after value
 
 
 ###########################################################
@@ -436,8 +438,8 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
     #fill matrix with data
     block_found = 0
     j = 0
-    leak = ""
-    alloc_bug = ""
+    leak = []
+    alloc_bug = []
     for i in range(end_of_block-wad_table):    
         tokens = lines[wad_table+i].split()
         try: 
@@ -462,11 +464,11 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
                 #frees cannot exceed allocs
                 
                 if int(data[j][2]) > int(data[j][1]):
-                    alloc_bug = data[j][9]
+                    alloc_bug.append(data[j][9])
                 
                 #check for obvious memory leak
                 if int(tokens[7]) < 0 or int(tokens[8]) < 0:
-                    leak = tokens[9]
+                    leak.append(tokens[9])
             j = j+1                        
         except:
             print("jump! wad_table")
@@ -504,15 +506,17 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
     outputfile.write(tabulate(data_sorted_table,headers=head,tablefmt="grid"))
     outputfile.write("\n")
     outputfile.write("\n")    
-    outputfile.write("leak found: "+ leak)       
+    if len(leak) != 0:            
+        outputfile.write("Negative Values: ")
+        outputfile.write(str(leak))         
     outputfile.write("\n")  
     outputfile.write("\n")      
     
-    if alloc_bug != "":
+    if len(alloc_bug) != 0:
             outputfile.write("\n")    
-            outputfile.write("Wrong allocation found at: "+ leak)       
+            outputfile.write("More frees then allocs found: ")
+            outputfile.write(str(alloc_bug))                       
             outputfile.write("\n")  
-            outputfile.write("check for more inconsistencies")    
             outputfile.write("\n")  
     return data_sorted_table
 
@@ -520,8 +524,6 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
 def wad_all(wad_table, lines, end_of_block,outputfile):
     print("### diagnose wad memory all")
 
-
-    #******* [type=worker pid=304 idx=0] *******
     
     elements = 0
     head = ["ID","allocs","frees","reallocs","avg_size","in_str","active","bytes","max","cmem object name"]   
@@ -531,9 +533,6 @@ def wad_all(wad_table, lines, end_of_block,outputfile):
     PID = []
     blocks = []
     
-    print(wad_table)
-    print(end_of_block)    
-    print(end_of_block-wad_table)
     
     for i in range(end_of_block-wad_table):    
         tokens = lines[wad_table+i].split()
@@ -556,105 +555,111 @@ def wad_all(wad_table, lines, end_of_block,outputfile):
             print("jump! wad_table_all")
     
 
-    print("elements " +str(elements))
-
-
-    print("PID " +str(PID))
-    print("\n")
-    print("\n")
-    print("blocks " + str(blocks))
-
-    data = []
-    for i in range(elements-1):    
-        data.append(["-"])
-
-
-    for i in range(elements-1):     
-        for j in range(9):
-            data[i].append("-")
-    
-    
-    #fill matrix with data
-    block_found = 0
-    j = 0
-    leak = ""
-    alloc_bug = ""
-    for i in range(end_of_block-wad_table):    
-        tokens = lines[wad_table+i].split()
-        try: 
-            if len(tokens)>0:
-                if tokens[0] == "id":
-                    block_found = 1 
-                    j = 0
-                    continue
-                    
-            if len(tokens)>0 and block_found == 1:
-                data[j][0] = tokens[0]                  #id
-                data[j][1] = tokens[1]                  #allocs
-                data[j][2] = tokens[2]                  #frees
-                data[j][3] = tokens[3]                  #reallocs
-                data[j][4] = tokens[4]                  #avg_size
-                data[j][5] = tokens[5]                  #in_str
-                data[j][6] = tokens[6]                  #active
-                data[j][7] = tokens[7]                  #bytes
-                data[j][8] = tokens[8]                  #max
-                data[j][9] = tokens[9]                  #cmem object name
-                
-                #frees cannot exceed allocs
-                
-                if int(data[j][2]) > int(data[j][1]):
-                    alloc_bug = data[j][9]
-                
-                #check for obvious memory leak
-                if int(tokens[7]) < 0 or int(tokens[8]) < 0:
-                    leak = tokens[9]
-            j = j+1                        
-        except:
-            print("jump! wad_table")
-  
-    
-    if leak == "":
-        leak = "no obvious leak found, i.e. negative byte values"
-    
-    #create tuples used for sorting, first element is the key, the bytes column
-    tuples = []
-    for i in range(elements-1):
-            tuples.append((i,data[i][7]))
-
-
-    #sort tuples
-    data_sorted = sorted(tuples, key=lambda x: int(x[1]))
-    data_sorted.reverse()
-    
-    #recreate the sorted data table
-    data_sorted_table = []
-    for i in range(elements-1):
-        index = data_sorted[i][0]
-        data_sorted_table.append(data[index])    
-
-
-
-    data_sorted = sorted(tuples, key=lambda x: int(x[1]))
-    data_sorted.reverse()
-    
-
-
     outputfile.write("### diagnose wad memory all")
     outputfile.write("\n")
-    outputfile.write("\n")        
-    outputfile.write(tabulate(data_sorted_table,headers=head,tablefmt="grid"))
-    outputfile.write("\n")
-    outputfile.write("\n")    
-    outputfile.write("leak found: "+ leak)       
-    outputfile.write("\n")  
-    outputfile.write("\n")      
+    outputfile.write("\n") 
+
+    for x in range(len(blocks)):
+        data = []
+        for i in range(elements-1):    
+            data.append(["-"])
     
-    if alloc_bug != "":
-            outputfile.write("\n")    
-            outputfile.write("Wrong allocation found at: "+ leak)       
-            outputfile.write("\n")  
-            outputfile.write("check for more inconsistencies")    
-            outputfile.write("\n")  
+    
+        for i in range(elements-1):     
+            for j in range(9):
+                data[i].append("-")
+        
+        
+        #fill matrix with data
+        block_found = 0
+        j = 0
+        leak = []
+        alloc_bug = []
+        for i in range(end_of_block-wad_table):    
+            tokens = lines[wad_table+i].split()
+            try: 
+                if len(tokens)>0:
+
+                    if tokens[0] == "id":
+                        tokens_pid = lines[wad_table+i-4].split()
+                        if tokens_pid[2].split("=")[1] == str(PID[x]):
+                            block_found = 1 
+                            j = 0
+                            continue
+                        
+                if len(tokens)>0 and block_found == 1:
+                    data[j][0] = tokens[0]                  #id
+                    data[j][1] = tokens[1]                  #allocs
+                    data[j][2] = tokens[2]                  #frees
+                    data[j][3] = tokens[3]                  #reallocs
+                    data[j][4] = tokens[4]                  #avg_size
+                    data[j][5] = tokens[5]                  #in_str
+                    data[j][6] = tokens[6]                  #active
+                    data[j][7] = tokens[7]                  #bytes
+                    data[j][8] = tokens[8]                  #max
+                    data[j][9] = tokens[9]                  #cmem object name
+                    
+                    
+                    #frees cannot exceed allocs
+                    if int(data[j][2]) > int(data[j][1]):
+                        alloc_bug.append(data[j][9])
+
+                    #check for obvious memory leak
+                    if int(tokens[7]) < 0 or int(tokens[8]) < 0:
+                        leak.append(tokens[9])
+
+                j = j+1                        
+            except:
+                a=1     #dummy
+                #print("jump! wad_table")
+      
+        
+        if leak == "":
+            leak = "no obvious leak found, i.e. negative byte values"
+        
+        #create tuples used for sorting, first element is the key, the bytes column
+        tuples = []
+        for i in range(elements-1):
+                tuples.append((i,data[i][7]))
+    
+    
+        #sort tuples
+        data_sorted = sorted(tuples, key=lambda x: int(x[1]))
+        data_sorted.reverse()
+        
+        #recreate the sorted data table
+        data_sorted_table = []
+        for i in range(elements-1):
+            index = data_sorted[i][0]
+            data_sorted_table.append(data[index])    
+    
+    
+    
+        data_sorted = sorted(tuples, key=lambda x: int(x[1]))
+        data_sorted.reverse()
+        
+        outputfile.write("\n")    
+        outputfile.write("\n")    
+        outputfile.write("******** pid="+ str(PID[x]) +" ***********")
+        outputfile.write("\n")
+        outputfile.write("\n")        
+        outputfile.write(tabulate(data_sorted_table,headers=head,tablefmt="grid"))
+        outputfile.write("\n")
+        outputfile.write("\n")
+        
+        if len(leak) != 0:            
+            outputfile.write("Negative Values: ")
+            outputfile.write(str(leak))                   
+        outputfile.write("\n")  
+        outputfile.write("\n")      
+        
+        if len(alloc_bug) != 0:
+                outputfile.write("\n")    
+                outputfile.write("More frees then allocs found: ")
+                outputfile.write(str(alloc_bug))                       
+                outputfile.write("\n")  
+                outputfile.write("\n")  
+    
     return data_sorted_table
 
 
@@ -707,6 +712,11 @@ def ips_s(ips_start_line, lines, end_of_block,outputfile):
                     data.append([str(tokens[0])+ " "+ str(tokens[1])])
                     data[table_iter].append(str(tokens[2]))
                     table_iter = table_iter + 1
+
+                if tokens[0] == "recent":
+                    data.append([str(tokens[0])+ " "+ str(tokens[1])])
+                    data[table_iter].append(str(tokens[2]))
+                    table_iter = table_iter + 1                    
                     
                 if tokens[0] == "session" and tokens[1] == "in-use":
                     data.append([str(tokens[0])+ " "+ str(tokens[1])])
@@ -1909,7 +1919,7 @@ def find_blocks(filename):
     
         if len(general_system_lines) == 0: 
             outputfile.write("\n")   
-            outputfile.write("get system status not found") 
+            outputfile.write("# get system status not found") 
             outputfile.write("\n")   
     except Exception as e:
         outputfile.write("\n")   
@@ -1935,7 +1945,7 @@ def find_blocks(filename):
     
         if len(sys_settings) == 0: 
             outputfile.write("\n")   
-            outputfile.write("config system settings not found") 
+            outputfile.write("# config system settings not found") 
             outputfile.write("\n") 
     except Exception as e:
         outputfile.write("\n")   
@@ -1964,7 +1974,7 @@ def find_blocks(filename):
     
         if len(mem_overv) == 0: 
             outputfile.write("\n")   
-            outputfile.write("diagnose hardware sysinfo memory not found") 
+            outputfile.write("# diagnose hardware sysinfo memory not found") 
             outputfile.write("\n")   
         
     except Exception as e:
@@ -1991,7 +2001,7 @@ def find_blocks(filename):
     
         if len(crashlogs) == 0: 
             outputfile.write("\n")   
-            outputfile.write("diagnose debug crashlog read not found") 
+            outputfile.write("# diagnose debug crashlog read not found") 
             outputfile.write("\n")   
 
     except Exception as e:
@@ -2020,7 +2030,7 @@ def find_blocks(filename):
     
         if len(sys_top_lines) == 0: 
             outputfile.write("\n")   
-            outputfile.write("diag sys top not found") 
+            outputfile.write("# diag sys top not found") 
             outputfile.write("\n") 
 
     except Exception as e:
@@ -2128,7 +2138,7 @@ def find_blocks(filename):
         
         if len(slabinfo) == 0: 
             outputfile.write("\n")   
-            outputfile.write("diagnose hardware sysinfo slab not found") 
+            outputfile.write("# diagnose hardware sysinfo slab not found") 
             outputfile.write("\n")
 
     except Exception as e:
@@ -2155,7 +2165,7 @@ def find_blocks(filename):
         
         if len(ips_session) == 0:
             outputfile.write("\n")
-            outputfile.write("get ips session not found")   
+            outputfile.write("# get ips session not found")   
             outputfile.write("\n")
 
     except Exception as e:
@@ -2182,7 +2192,7 @@ def find_blocks(filename):
     
         if len(mig) == 0:
             outputfile.write("\n")
-            outputfile.write("diagnose test application miglogd 6 not found") 
+            outputfile.write("# diagnose test application miglogd 6 not found") 
             outputfile.write("\n")
 
     except Exception as e:
@@ -2209,7 +2219,7 @@ def find_blocks(filename):
     
         if len(wad_table) == 0:
             outputfile.write("\n")
-            outputfile.write("diagnose wad memory sum not found or empty")         
+            outputfile.write("# diagnose wad memory sum not found or empty")         
             outputfile.write("\n")
 
     except Exception as e:
@@ -2241,7 +2251,7 @@ def find_blocks(filename):
     
         if len(wad_table_all) == 0:
             outputfile.write("\n")
-            outputfile.write("diagnose wad memory all not found or empty")         
+            outputfile.write("# diagnose wad memory all not found or empty")         
             outputfile.write("\n")
 
     except Exception as e:
@@ -2294,7 +2304,7 @@ def find_blocks(filename):
             #print(perf_data)
         if len(performance_status) == 0: 
             outputfile.write("\n")   
-            outputfile.write("get system performance status not found") 
+            outputfile.write("# get system performance status not found") 
             outputfile.write("\n")       
     
     except Exception as e:
@@ -2322,7 +2332,7 @@ def find_blocks(filename):
     
         if len(sys_top_lines) == 0: 
             outputfile.write("\n")   
-            outputfile.write("diag sys top not found") 
+            outputfile.write("# diag sys top not found") 
             outputfile.write("\n") 
 
     except Exception as e:
@@ -2348,7 +2358,7 @@ def find_blocks(filename):
     
         if len(session_list) == 0: 
             outputfile.write("\n")   
-            outputfile.write("diag sys session list not found") 
+            outputfile.write("# diag sys session list not found") 
             outputfile.write("\n")   
 
     except Exception as e:
@@ -2375,7 +2385,7 @@ def find_blocks(filename):
     
         if len(proxy_stats) == 0:
             outputfile.write("\n")
-            outputfile.write("diagnose sys proxy stats all not found or empty")         
+            outputfile.write("# diagnose sys proxy stats all not found or empty")         
             outputfile.write("\n")
         
     except Exception as e:
@@ -2402,7 +2412,7 @@ def find_blocks(filename):
 
 #    find_blocks(sys.argv[1])
 
-find_blocks("FG201FT921905883_debug.log")
+find_blocks("MASTER_exec_tac_report.txt")
 
 
 
