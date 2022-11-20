@@ -407,6 +407,12 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
         try: 
             if len(tokens)>0:
                 #print(tokens)
+
+                if tokens[0] == "Command" and tokens[1] == "fail." and tokens[4] == "-61":                
+                    outputfile.write("\n")
+                    outputfile.write("Command fail. Return code -61")
+                    outputfile.write("\n")
+                    return 0
                 
                 if end_of_wad_block == 0:
                     elements = elements +1 
@@ -522,6 +528,10 @@ def wad_t(wad_table, lines, end_of_block,outputfile):
 def wad_all(wad_table, lines, end_of_block,outputfile):
     print("### diagnose wad memory all")
 
+
+    outputfile.write("### diagnose wad memory all")
+    outputfile.write("\n")
+    outputfile.write("\n") 
     
     elements = 0
     head = ["ID","allocs","frees","reallocs","avg_size","in_str","active","bytes","max","cmem object name"]   
@@ -531,15 +541,22 @@ def wad_all(wad_table, lines, end_of_block,outputfile):
     PID = []
     blocks = []
     
-    
     for i in range(end_of_block-wad_table):    
         tokens = lines[wad_table+i].split()
         try: 
             if len(tokens)>0:
                 #print(tokens)
+
+                if tokens[0] == "Command" and tokens[1] == "fail." and tokens[4] == "-61":                
+                    print("COMMAND FAILED ERROR CODE -61")
+                    outputfile.write("\n")
+                    outputfile.write("Command fail. Return code -61")
+                    outputfile.write("\n")
+                    return 0
+
                 
                 if tokens[2].split("=")[0] == "pid":
-                    PID.append(tokens[2].split("=")[1])
+                    PID.append(tokens[2].split("=")[1])          
                  
                 if end_of_wad_block == 0:
                     elements = elements +1 
@@ -553,9 +570,7 @@ def wad_all(wad_table, lines, end_of_block,outputfile):
             print("jump! wad_table_all")
     
 
-    outputfile.write("### diagnose wad memory all")
-    outputfile.write("\n")
-    outputfile.write("\n") 
+
 
     for x in range(len(blocks)):
         data = []
@@ -659,7 +674,162 @@ def wad_all(wad_table, lines, end_of_block,outputfile):
     return data_sorted_table
 
 
+def wad_workers(wad_table, lines, end_of_block,outputfile):
+    print("### diagnose wad memory workers")
 
+    outputfile.write("\n")
+    outputfile.write("\n") 
+    outputfile.write("### diagnose wad memory workers")
+    outputfile.write("\n")
+    outputfile.write("\n") 
+    
+    elements = 0
+    head = ["ID","allocs","frees","reallocs","avg_size","in_str","active","bytes","max","cmem object name"]   
+    end_of_wad_block = 0 
+    
+
+    PID = []
+    blocks = []
+    
+
+    for i in range(end_of_block-wad_table):    
+        tokens = lines[wad_table+i].split()
+        try: 
+            if len(tokens)>0:
+                #print(tokens)
+
+                if tokens[0] == "Command" and tokens[1] == "fail." and tokens[4] == "-61":                
+                    print("COMMAND FAILED ERROR CODE -61")                    
+                    outputfile.write("\n")
+                    outputfile.write("Command fail. Return code -61")
+                    outputfile.write("\n")
+                    return 0
+
+                if len(tokens) == 9:
+                    if tokens[6].split("(")[1] == "pid:":
+                        PID.append(tokens[7].split(")")[0])    
+                        
+                                    
+                if end_of_wad_block == 0:
+                    elements = elements +1 
+                    
+                if tokens[0] == "id":
+                    elements = 0 
+                    offset = i
+                    blocks.append(i)
+                                      
+        except:
+            dummy = 0
+            #print("jump! wad_table_workers")
+    
+    
+    elements = elements -5      # dirty workaround
+    
+    
+    for x in range(len(blocks)):
+        data = []
+        for i in range(elements-1):    
+            data.append(["-"])
+    
+    
+        for i in range(elements-1):     
+            for j in range(9):
+                data[i].append("-")
+        
+        
+        #fill matrix with data
+        block_found = 0
+        j = 0
+        leak = []
+        alloc_bug = []
+        for i in range(end_of_block-wad_table):    
+            tokens = lines[wad_table+i].split()
+            try: 
+                if len(tokens)>0:
+
+                    if tokens[0] == "id":
+                        print("HALLO")
+                        tokens_pid = lines[wad_table+i-4].split()
+                        block_found = 1 
+                        j = 0
+                        continue
+                        
+                if len(tokens)>0 and block_found == 1:
+                    data[j][0] = tokens[0]                  #id
+                    data[j][1] = tokens[1]                  #allocs
+                    data[j][2] = tokens[2]                  #frees
+                    data[j][3] = tokens[3]                  #reallocs
+                    data[j][4] = tokens[4]                  #avg_size
+                    data[j][5] = tokens[5]                  #in_str
+                    data[j][6] = tokens[6]                  #active
+                    data[j][7] = tokens[7]                  #bytes
+                    data[j][8] = tokens[8]                  #max
+                    data[j][9] = tokens[9]                  #cmem object name
+                    
+                    
+                    #frees cannot exceed allocs
+                    if int(data[j][2]) > int(data[j][1]):
+                        alloc_bug.append(data[j][9])
+
+                    #check for obvious memory leak
+                    if int(tokens[7]) < 0 or int(tokens[8]) < 0:
+                        leak.append(tokens[9])
+
+                j = j+1                        
+            except:
+                a=1     #dummy
+                print("jump! wad_table_workers")
+      
+
+        
+        #create tuples used for sorting, first element is the key, the bytes column
+        tuples = []
+        for i in range(elements-1):
+                tuples.append((i,data[i][7]))
+    
+    
+        #sort tuples
+        data_sorted = sorted(tuples, key=lambda x: int(x[1]))
+        data_sorted.reverse()
+        
+        #recreate the sorted data table
+        data_sorted_table = []
+        for i in range(elements-1):
+            index = data_sorted[i][0]
+            data_sorted_table.append(data[index])    
+    
+    
+    
+        data_sorted = sorted(tuples, key=lambda x: int(x[1]))
+        data_sorted.reverse()
+        
+        print(data_sorted)
+        
+        outputfile.write("\n")    
+        outputfile.write("\n")    
+        outputfile.write("******** pid="+ str(PID[x]) +" ***********")
+        outputfile.write("\n")
+        outputfile.write("\n")        
+        outputfile.write(tabulate(data_sorted_table,headers=head,tablefmt="grid"))
+        outputfile.write("\n")
+        outputfile.write("\n")
+        
+        if len(leak) != 0:            
+            outputfile.write("Negative Values: ")
+            outputfile.write(str(leak))                   
+        outputfile.write("\n")  
+        outputfile.write("\n")      
+        
+        if len(alloc_bug) != 0:
+                outputfile.write("\n")    
+                outputfile.write("More frees then allocs found: ")
+                outputfile.write(str(alloc_bug))                       
+                outputfile.write("\n")  
+                outputfile.write("\n")  
+    
+    return data_sorted_table
+
+  
 
 
 def miglogd(mig_start_line, lines, end_of_block,outputfile):
@@ -1133,7 +1303,8 @@ def sys_top(blocks, lines, end_of_block,outputfile):
                     current_block.append(i)
                     head.append(str(Iteration))
                     Iteration = Iteration + 1   
-                    elements = 0 
+                    #print(elements)
+                    elements = 0   
         except:
             print("jump! sys top")
     processes = []
@@ -1790,7 +1961,7 @@ def find_blocks(filename):
     proxy_stats = []
     wad_table_all =[]
     cmd_used_at = []
-
+    wad_table_workers = []
 
     #delete empty cmd lines
     i = 0
@@ -1869,6 +2040,9 @@ def find_blocks(filename):
 
                 if tokens[t] == "wad" and tokens[t+1] == "memory" and tokens[t+2] == "all":
                     wad_table_all.append(i)
+
+                if tokens[t] == "wad" and tokens[t+1] == "memory" and tokens[t+2] == "workers":
+                    wad_table_workers.append(i)
                     
                 if tokens[t] == "application" and tokens[t+1] == "wad" and tokens[t+2] == "803":
                     wad_table.append(i)
@@ -2241,9 +2415,11 @@ def find_blocks(filename):
             print(str(wad_table_all[0]))
             print(end_of_block)      
             if end_of_block == len(cmd_used_at)-1:        
-                wad_data_table_all = wad_all(wad_table_all,lines,i,outputfile)
+                #wad_data_table_all = wad_all(wad_table_all,lines,i,outputfile)
+                wad_all(wad_table_all,lines,i,outputfile)
             else:
-                wad_data_table_all = wad_all(wad_table_all[0],lines,cmd_used_at[end_of_block+1], outputfile)        
+                #wad_data_table_all = wad_all(wad_table_all[0],lines,cmd_used_at[end_of_block+1], outputfile)                  
+                wad_all(wad_table_all[0],lines,cmd_used_at[end_of_block+1], outputfile)        
     
         if len(wad_table_all) == 0:
             outputfile.write("\n")
@@ -2263,7 +2439,38 @@ def find_blocks(filename):
         outputfile.write("\n") 
         outputfile.write("\n")   
 
+    #diagnose wad memory workers
+    try:
+        if len(wad_table_workers)>0:
+            end_of_block = cmd_used_at.index(wad_table_workers[0])
+            print("wad " + str(cmd_used_at.index(wad_table_workers[0])))
+            print(cmd_used_at)
+            print(str(wad_table_workers[0]))
+            print(end_of_block)      
+            if end_of_block == len(cmd_used_at)-1:        
+                #wad_data_table_all = wad_all(wad_table_all,lines,i,outputfile)
+                wad_workers(wad_table_workers,lines,i,outputfile)
+            else:
+                #wad_data_table_all = wad_all(wad_table_all[0],lines,cmd_used_at[end_of_block+1], outputfile)                  
+                wad_workers(wad_table_workers[0],lines,cmd_used_at[end_of_block+1], outputfile)        
+    
+        if len(wad_table_workers) == 0:
+            outputfile.write("\n")
+            outputfile.write("# diagnose wad memory workers not found or empty")         
+            outputfile.write("\n")
 
+    except Exception as e:
+        outputfile.write("\n")   
+        outputfile.write("#diagnose wad workers all failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")   
 
 
 
@@ -2408,7 +2615,7 @@ def find_blocks(filename):
 
 #    find_blocks(sys.argv[1])
 
-find_blocks("MASTER_exec_tac_report.txt")
+find_blocks("Output_commands_Fortigate_20221118.txt")
 
 
 
