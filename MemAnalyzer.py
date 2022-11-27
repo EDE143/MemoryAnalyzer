@@ -847,6 +847,8 @@ def wad_report(wad_table, lines, end_of_block,outputfile):
     
 
     PID = []
+    worker_line = []
+    TCP_port_line = []
     blocks = []
     report_pid_index = []
 
@@ -862,13 +864,22 @@ def wad_report(wad_table, lines, end_of_block,outputfile):
                     outputfile.write("Command fail. Return code -61")
                     outputfile.write("\n")
                     return 0
-
+                
+                #WAD Table
                 if tokens[1] == "Memory" and tokens[2] == "report" and tokens[3] == "of":
                     if tokens[5].split("=")[0] == "(pid":
                         current_pid = tokens[5].split("=")[1]    
                         PID.append(current_pid.split(")")[0])
                         report_pid_index.append(i)
-                                    
+                
+                #Worker stats / SSL,... etc. usage                     
+                if tokens[1] == "worker" and tokens[2] == "stats":
+                    worker_line.append(i)
+
+                #Start of TCP Port (worker stats end here)                    
+                if tokens[1] == "tcp" and tokens[2] == "port":
+                    TCP_port_line.append(i)
+                
                 if end_of_wad_block == 0:
                     elements = elements +1 
                     
@@ -885,7 +896,7 @@ def wad_report(wad_table, lines, end_of_block,outputfile):
     
     
     #elements = elements -5      # dirty workaround
-    print(report_pid_index)
+
     
     for x in range(len(blocks)):
         data = []
@@ -903,6 +914,8 @@ def wad_report(wad_table, lines, end_of_block,outputfile):
         j = 0
         leak = []
         alloc_bug = []
+        elements_workers = 0
+        elements_workers2 = 0
         for i in range(end_of_block-wad_table):    
             tokens = lines[wad_table+i].split()
             try: 
@@ -940,8 +953,144 @@ def wad_report(wad_table, lines, end_of_block,outputfile):
                 a=1     #dummy
                 #print("jump! wad_table_report")
       
+        
+       
+        #Worker stats
+        for i in range(TCP_port_line[x]-worker_line[x]): 
+            tokens = lines[wad_table + worker_line[x]+i].split()
+            
+            # elements of now-max-total table
+            try:
+                if len(tokens)>2:
+                    #total not 0
+                    if int(tokens[4]) != 0:
+                        elements_workers = elements_workers + 1
+                        
+                if len(tokens) == 2:
+                    if "_bytes" in tokens[0]:                    
+                    # not 0
+                        if int(tokens[1]) != 0:
+                            elements_workers2 = elements_workers2 + 1
+                        
+            except:
+                dummy = 0
+        
+        
+        
+        head_worker = ["name", "now", "max", "total"]
+        data_worker = []
+        k = 0
+        for i in range(elements_workers+1):    
+            data_worker.append(["-"])
+    
+    
+        for i in range(elements_workers+1):     
+            for j in range(3):
+                data_worker[i].append("-")           
+        
+        for i in range(TCP_port_line[x]-worker_line[x]-1): 
+            tokens = lines[wad_table + worker_line[x]+i+1].split()
+            try: 
+                if len(tokens)>3:
+                    
+                    
+                    data_worker[k][0] = tokens[0]
+                    
+                    if int(tokens[4]) == 0:
+                        continue
+                        
+    
+                    for j in range(len(tokens)-1):
+                        if tokens[j] == "now":
+                            data_worker[k][1] = tokens[j+1]
+                    
+                        if tokens[j] == "max":
+                            data_worker[k][2] = tokens[j+1]                
+    
+                        if tokens[j] == "total":
+                            data_worker[k][3] = tokens[j+1]
+                
+                    k = k +1            
+            
+            finally:
+                dummy = 1
+        
+        #WORKERS TABLE
+        tuples_workers = []
+        for i in range(elements_workers-1):
+                tuples_workers.append((i,data_worker[i][1]))
+    
+    
+        #sort tuples
+        data_sorted_workers = sorted(tuples_workers, key=lambda x: int(x[1]))
+        data_sorted_workers.reverse()
+            
+    
+        #recreate the sorted data table
+        data_sorted_table_workers = []
+        for i in range(elements_workers-1):
+            index_worker = data_sorted_workers[i][0]
+            data_sorted_table_workers.append(data_worker[index_worker])        
+
+ 
+
+        head2 = ["name", "value"]
+        data2 = []
+        for i in range(elements_workers2):    
+            data2.append(["-"])
+    
+    
+        for i in range(elements_workers2):     
+            for j in range(1):
+                data2[i].append("-")               
+        
+
+
+        k2 = 0
+        for i in range(TCP_port_line[x]-worker_line[x]): 
+            tokens = lines[wad_table + worker_line[x]+i].split()
+            try: 
+                if len(tokens) == 2:
+                    
+                    if "_bytes" in tokens[0]:
+                       
+                    
+                        data2[k2][0] = tokens[0]
+                        
+                        if int(tokens[1]) == 0:
+                            continue
+                            
+        
+                        data2[k2][1] = tokens[1]
+                    
+                        k2 = k2 +1            
+      
+            except:
+                dummy = 0
+                #print("jump! sys_proxy_table")    
+        
+        
+    
+        tuples2 = []
+        for i in range(elements_workers2-1):
+                tuples2.append((i,data2[i][1]))
+    
+    
+        #sort tuples
+        data_sorted2 = sorted(tuples2, key=lambda x: int(x[1]))
+        data_sorted2.reverse()
+            
+    
+        #recreate the sorted data table
+        data_sorted_table2 = []
+        for i in range(elements_workers2-1):
+            index = data_sorted2[i][0]
+            data_sorted_table2.append(data2[index])     
+
+
 
         
+        #WAD TABLE
         #create tuples used for sorting, first element is the key, the bytes column
         tuples = []
         for i in range(elements_table-1):
@@ -984,7 +1133,27 @@ def wad_report(wad_table, lines, end_of_block,outputfile):
                 outputfile.write("More frees then allocs found: ")
                 outputfile.write(str(alloc_bug))                       
                 outputfile.write("\n")  
-                outputfile.write("\n")  
+                outputfile.write("\n")
+        
+        
+        
+        # WORKER STATS output
+        outputfile.write("Worker stats of PID: " + PID[x])
+        outputfile.write("\n")        
+        outputfile.write("\n")        
+        outputfile.write(tabulate(data_sorted_table_workers,headers=head_worker,tablefmt="grid"))
+        outputfile.write("\n")
+        outputfile.write("\n")
+        outputfile.write("Worker stats bytes of PID: " + PID[x])  
+        outputfile.write("\n")
+        outputfile.write("\n") 
+        outputfile.write(tabulate(data_sorted_table2,headers=head2,tablefmt="grid"))
+        outputfile.write("\n")          
+        
+        
+        
+        
+          
     
     return data_sorted_table
 
@@ -1161,7 +1330,7 @@ def slab(slab_start_line, lines, end_of_block,outputfile):
 
 
 def mem_overview(mem_start_line, lines, end_of_block,outputfile):
-    print("MEMORY OVERVIEW")
+    print("### diagnose hardware sysinfo memory")
    
     
     usefull_values = 8
