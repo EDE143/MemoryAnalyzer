@@ -9,14 +9,6 @@
 
 
 ################
-#download python3
-
-#add scripts to windows path variables
-#add <path/to/your/scirpt/folder> to "path" 
-
-
-
-################
 #ROBUSTHEIT
 
 #idee: für robustheit alle strings in lowercase vergleichen, falls die devs irgendwas ändern
@@ -859,12 +851,7 @@ def wad_report(wad_table, lines, end_of_block,outputfile):
     TCP_port_line = []
     blocks = []
     report_pid_index = []
-    fmem_stats_index = []
-    total_memory_index = []
-    
-    
-    mmaped_regions = []
-    
+
     for i in range(end_of_block-wad_table):    
         tokens = lines[wad_table+i].split()
         try: 
@@ -889,16 +876,6 @@ def wad_report(wad_table, lines, end_of_block,outputfile):
                 if tokens[1] == "worker" and tokens[2] == "stats":
                     worker_line.append(i)
 
-                #fmem stats index                 
-                if tokens[1] == "fmem" and tokens[2] == "stats":
-                    fmem_stats_index.append(i)
-
-
-                #total memory index                 
-                if tokens[1] == "total" and tokens[2] == "memory" and tokens[3] == "usage":
-                    total_memory_index.append(i)
-
-
                 #Start of TCP Port (worker stats end here)                    
                 if tokens[1] == "tcp" and tokens[2] == "port":
                     TCP_port_line.append(i)
@@ -918,7 +895,7 @@ def wad_report(wad_table, lines, end_of_block,outputfile):
             #print("jump! wad_table_workers")
     
     
-
+    #elements = elements -5      # dirty workaround
 
     
     for x in range(len(blocks)):
@@ -977,33 +954,7 @@ def wad_report(wad_table, lines, end_of_block,outputfile):
                 #print("jump! wad_table_report")
       
         
-        
-        
-
-        print(x)
-        print(fmem_stats_index[x]-total_memory_index[x])        
-        #total memory stats
-        for i in range(fmem_stats_index[x]-total_memory_index[x]): 
-            tokens = lines[wad_table + total_memory_index[x]+i].split()
-            
-            
-            # elements of now-max-total table
-            try:
-                if len(tokens)>2:
-                    #print(tokens)
-                    if tokens[0] == "space" and tokens[2] == "mmapped" and tokens[3] =="regions:":
-                        mmaped_regions.append(tokens[4])
-                    
-                    
-                        
-            except:
-                dummy = 0
-        
-        
        
-        print("mmaped_regions")
-        print(mmaped_regions)
-        
         #Worker stats
         for i in range(TCP_port_line[x]-worker_line[x]): 
             tokens = lines[wad_table + worker_line[x]+i].split()
@@ -1204,7 +1155,7 @@ def wad_report(wad_table, lines, end_of_block,outputfile):
         
           
     
-    return (mmaped_regions, data_sorted_table)
+    return data_sorted_table
 
 def miglogd(mig_start_line, lines, end_of_block,outputfile):
     print("MIGLOGD")
@@ -2296,101 +2247,11 @@ def sys_performance_status(sys_start_line, lines, end_of_block,outputfile):
                     if "nTurbo" == tokens[j]:   
                             outputfile.write(lines[sys_start_line[0]+i]) 
                             outputfile.write("\n")
-
-                    if "Uptime:" == tokens[j]:   
-                            
-                            days = tokens[1]
-                            hours = tokens[3] 
-                            minutes = tokens[5]
-                            uptime = (int(days)*24*60 + int(hours)*60 + int(minutes))*60         # uptime in seconds
-
-                                                                            
+                                                
         except:
             print("jump! get system performance status")
 
 
-    return data,uptime
-
-
-def ifconfig(sys_start_line, lines, end_of_block,outputfile,uptime):
-    print("### fnsysctl ifconfig")
-    outputfile.write("\n") 
-    outputfile.write("\n") 
-    outputfile.write("### fnsysctl ifconfig")
-    outputfile.write("\n") 
-    outputfile.write("\n") 
-    
-
-    MB = 1000000
-    triples = []
-    
-    for i in range(end_of_block-sys_start_line[0]-1):    
-        tokens = lines[sys_start_line[0]+i].split() 
-        
-        try:
-            if len(tokens)>0:
-                if "Link" in tokens[1]:                               # line with the interface name
-                    name = tokens[0]
-
-                if "RX" in tokens[0]:                               # RX = reciever, TX = transiever
-                    RX = tokens[1].split(":")[1]             
-                    TX = tokens[5].split(":")[1]
-
-                    triples.append((name,RX,TX))                                                        
-        except:
-            print("jump! ifconfig")
-
-
-
-
-    ifconfig_short = []
-    for i in range(len(triples)):
-
-        if(int(triples[i][1])) != 0 or int(triples[i][2]) != 0 : 
-              ifconfig_short.append(triples[i])
-
-    print(ifconfig_short)
-    #cmdb_short.append(("numbered_processes", int(size_numbered_processes))) 
-    ifconfig_sorted = sorted(ifconfig_short, key=lambda x: float(x[1]))
-    ifconfig_sorted.reverse()
-    
-    data = []
-    for i in range(len(ifconfig_sorted)):    
-        data.append(["dummy"])
-
-
-    for i in range(len(ifconfig_sorted)):     
-        for j in range(4):
-            data[i].append("dummy")
-    
-
-
-    
-    for i in range(len(ifconfig_sorted)):
-        data[i][0] = ifconfig_sorted[i][0]
-        data[i][1] = int(ifconfig_sorted[i][1])/MB
-        data[i][2] = int(ifconfig_sorted[i][1])/MB/uptime                      
-        data[i][3] = int(ifconfig_sorted[i][2])/MB       
-        data[i][4] = int(ifconfig_sorted[i][2])/MB/uptime  
-                    
-    head = ["Name", "RX (MB)", "RX/uptime (MB/s)", "TX (MB)", "TX/uptime (MB/s)"]          
-        
-    
-    outputfile.write("uptime days " + str(uptime/86400))
-    outputfile.write("\n") 
-    outputfile.write("uptime hours "+str(uptime/3600))    
-    outputfile.write("\n") 
-    outputfile.write("uptime minutes "+str(uptime/60))    
-    outputfile.write("\n")        
-    outputfile.write("RX = reciever, TX = transiever")   
-    outputfile.write("\n")    
-    outputfile.write(tabulate(data,headers=head,tablefmt="grid"))
-    outputfile.write("\n")   
-    outputfile.write("\n")  
-    outputfile.write("\n")  
-    
-    
-    
     return data
 
 ####################################################################################################
@@ -2427,7 +2288,6 @@ def find_blocks(filename):
     cmd_used_at = []
     wad_table_workers = []
     wad_table_report = []
-    ifconfig_start = []
 
     #delete empty cmd lines
     i = 0
@@ -2452,10 +2312,6 @@ def find_blocks(filename):
             
             if tokens[j] == "diag" or tokens[j] == "diagnose" or tokens[j] == "get" or tokens[j] == "fnsysctl" or tokens[j] == "exec" or tokens[j] == "show" or tokens[j] == "de" or tokens[j] == "di":
                 if tokens[j-1] == "#" or tokens[j-1] == "###":   #workaround for wad memory all - some cmem objects are called diag
-                    cmd_used_at.append(i)
-
-            if tokens[j] == "diag" or tokens[j] == "diagnose" or tokens[j] == "get" or tokens[j] == "fnsysctl" or tokens[j] == "exec" or tokens[j] == "show" or tokens[j] == "de" or tokens[j] == "di":
-                if tokens[j-1] == "$" or tokens[j-1] == "$$$":   #workaround for wad memory all - some cmem objects are called diag
                     cmd_used_at.append(i)
 
                 
@@ -2486,8 +2342,6 @@ def find_blocks(filename):
                 if tokens[t] == "ips" and tokens[t+1] == "session":
                     ips_session.append(i)                                                  
 
-                if tokens[t] == "fnsysctl" and tokens[t+1] == "ifconfig":
-                    ifconfig_start.append(i)     
                     
 
         if len(tokens) > 4:
@@ -2957,17 +2811,15 @@ def find_blocks(filename):
             print(end_of_block)      
             if end_of_block == len(cmd_used_at)-1:        
                 #wad_data_table_all = wad_report(wad_table_all,lines,i,outputfile)
-                (mmaped_regions, table) =  wad_report(wad_table_report,lines,i,outputfile)
+                wad_report(wad_table_report,lines,i,outputfile)
             else:
                 #wad_data_report_table_all = wad_report(wad_table_all[0],lines,cmd_used_at[end_of_block+1], outputfile)                  
-                (mmaped_regions, table) =  wad_report(wad_table_report[0],lines,cmd_used_at[end_of_block+1], outputfile)        
-    
+                wad_report(wad_table_report[0],lines,cmd_used_at[end_of_block+1], outputfile)        
     
         if len(wad_table_report) == 0:
             outputfile.write("\n")
             outputfile.write("# diagnose wad memory workers not found or empty")         
             outputfile.write("\n")
-
 
     except Exception as e:
         outputfile.write("\n")   
@@ -3008,9 +2860,9 @@ def find_blocks(filename):
         if len(performance_status)>0:
             end_of_block = cmd_used_at.index(performance_status[0])
             if end_of_block == len(cmd_used_at)-1:        
-                perf_data,uptime = sys_performance_status(performance_status,lines,i,outputfile)       
+                perf_data = sys_performance_status(performance_status,lines,i,outputfile)       
             else:
-                perf_data,uptime = sys_performance_status(performance_status,lines,cmd_used_at[end_of_block+1], outputfile)      
+                perf_data = sys_performance_status(performance_status,lines,cmd_used_at[end_of_block+1], outputfile)      
                 
             #print(perf_data)
         if len(performance_status) == 0: 
@@ -3030,35 +2882,6 @@ def find_blocks(filename):
         outputfile.write("contact author with the log file") 
         outputfile.write("\n") 
         outputfile.write("\n")  
-
-    #fnsysctl ipconfig
-    try:
-        if len(ifconfig_start)>0:
-            end_of_block = cmd_used_at.index(ifconfig_start[0])
-            if end_of_block == len(cmd_used_at)-1:        
-                ifconfig_data = ifconfig(ifconfig_start,lines,i,outputfile,uptime)       
-            else:
-                ifconfig_data = ifconfig(ifconfig_start,lines,cmd_used_at[end_of_block+1], outputfile,uptime)      
-                
-            
-        if len(ifconfig_start) == 0: 
-            outputfile.write("\n")   
-            outputfile.write("# fnsysctl ifconfig not found") 
-            outputfile.write("\n")       
-    
-    except Exception as e:
-        outputfile.write("\n")   
-        outputfile.write("#fnsysctl ifconfig failed because:") 
-        outputfile.write("\n") 
-        outputfile.write(str(e)) 
-        outputfile.write("\n") 
-        outputfile.write(traceback.format_exc())         
-        outputfile.write("\n") 
-        outputfile.write("\n") 
-        outputfile.write("contact author with the log file") 
-        outputfile.write("\n") 
-        outputfile.write("\n")  
-
     
     #diag sys top
     try:
@@ -3152,7 +2975,7 @@ def find_blocks(filename):
 
 #    find_blocks(sys.argv[1])
 
-find_blocks("LOOP.txt")
+find_blocks("Output_commands_Fortigate_20221118.txt")
 
 
 
