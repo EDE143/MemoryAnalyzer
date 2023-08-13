@@ -2393,13 +2393,149 @@ def ifconfig(sys_start_line, lines, end_of_block,outputfile,uptime):
     
     return data
 
+
+
+
+
+def ps_processes(sys_start_line, lines, end_of_block,outputfile):
+    outputfile.write("\n") 
+    outputfile.write("\n") 
+    outputfile.write("### fnsysctl ps")
+    outputfile.write("\n") 
+    outputfile.write("\n") 
+    
+    PID = []
+    name = []
+    start = 0
+    
+    print(end_of_block)
+    print(sys_start_line)
+
+    
+    for i in range(end_of_block-sys_start_line-1):    
+        tokens = lines[sys_start_line+i].split() 
+        
+        
+        try:
+
+            if len(tokens)>0 and start == 1:
+                                            
+                PID.append(tokens[0])
+                name.append(tokens[4])
+
+            if tokens[0] == "PID":
+                start = 1
+                                                      
+        except:
+            print("jump! ps_processes") 
+
+
+
+
+    
+    data = []
+    for i in range(len(PID)):    
+        data.append(["dummy"])
+
+
+    for i in range(len(PID)):     
+        for j in range(1):
+            data[i].append("dummy")
+    
+    
+    for i in range(len(data)):
+        data[i][0] = PID[i]
+        data[i][1] = name[i]
+        
+        outputfile.write("\n")         
+        outputfile.write("fnsysctl cat proc/"+PID[i]+"/smaps")
+        outputfile.write("\n") 
+        outputfile.write("fnsysctl cat proc/"+PID[i]+"/maps")
+        outputfile.write("\n") 
+        outputfile.write("fnsysctl cat proc/"+PID[i]+"/status")
+        outputfile.write("\n") 
+
+
+
+    return data
+
+
+def smaps_rollup(sys_start_line, lines, end_of_block,outputfile,fnsysctl_ps_processes,all_commands):
+
+
+    print(sys_start_line)    
+    print(all_commands)
+    print(end_of_block)
+
+    outputfile.write("\n") 
+    outputfile.write("\n") 
+    outputfile.write("### fnsysctl cat proc")
+    outputfile.write("\n") 
+    outputfile.write("\n") 
+    
+        
+    Rss_total = 0
+    Rss = [0]*len(sys_start_line)
+    
+    
+    j = -1
+    for k in range(len(sys_start_line)):
+        
+        
+        print("dd")
+        print(sys_start_line[k]-1)
+        index = all_commands.index(sys_start_line[k]) + 1
+        print(all_commands[index]) 
+        diff = all_commands[index]   -sys_start_line[k]-1        
+        print("diff   " + str(diff))
+        
+        
+        
+        
+        for i in range(diff):    
+            tokens = lines[all_commands[k]+i].split() 
+            print(tokens)
+    
+            try:            
+                if len(tokens)>0:
+                    if "Rss" in tokens[0]:                               # line with the interface name
+                        Rss_total = Rss_total + int(tokens[1])
+                        Rss[j] = Rss[j] + int(tokens[1])
+                        
+                    if tokens[4].split("/")[0] == "proc":
+                        j = j +1
+                                                          
+            except:
+                k = 1
+                #print("jump! roll_up")
+
+
+
+    #outputfile.write("\n") 
+    print(Rss_total)
+    print(Rss)
+
+    outputfile.write("\n") 
+    outputfile.write("Rss_total = "+ str(Rss_total))
+    
+    for i in range(len(Rss)):
+        outputfile.write("\n") 
+        outputfile.write(str(fnsysctl_ps_processes[i][0]) + "    " + str(Rss[i])  + "    " + str(fnsysctl_ps_processes[i][1]))
+        outputfile.write("\n")    
+        
+
+
+    
+    
+    #return data
+
+
 ####################################################################################################
 #################################### MAIN ##########################################################
 ####################################################################################################
         
 def find_blocks(filename):
-
-
+    
     global flag_a 
     flag_a = True 
 
@@ -2428,6 +2564,10 @@ def find_blocks(filename):
     wad_table_workers = []
     wad_table_report = []
     ifconfig_start = []
+    fnsysctl_ps = []
+    proc_smaps = []
+    top_mem = []
+    
 
     #delete empty cmd lines
     i = 0
@@ -2460,8 +2600,26 @@ def find_blocks(filename):
 
                 
         
+   
+        
         if len(tokens) > 3:
             for t in range(len_tokens-1):
+                
+
+                    
+                #if tokens[t].split["/"][0] == "proc":
+                #    proc_smaps.append(i)   
+
+                try:
+                    if tokens[t] == "cat":
+                        if tokens[4].split("/")[0] == "proc" and tokens[4].split("/")[2] == "smaps":
+                            proc_smaps.append(i)   
+                except:
+                    print("its sunday")        
+                
+                if tokens[t] == "fnsysctl" and tokens[t+1] == "ps":
+                    fnsysctl_ps.append(i)                   
+                
                 if tokens[t] == "system" and tokens[t+1] == "status":
                     general_system_lines.append(i)            
             
@@ -3140,6 +3298,69 @@ def find_blocks(filename):
         outputfile.write("contact author with the log file") 
         outputfile.write("\n") 
         outputfile.write("\n")  
+
+
+
+
+    #fnsysctl ps
+    try:
+        
+        if len(fnsysctl_ps)>0:
+            end_of_block = cmd_used_at.index(fnsysctl_ps[0])
+            if end_of_block == len(cmd_used_at)-1:        
+                ps_process_list = ps_processes(fnsysctl_ps,lines,i,outputfile)
+            else:
+                ps_process_list = ps_processes(fnsysctl_ps[0],lines,cmd_used_at[end_of_block+1], outputfile)        
+    
+        if len(wad_table) == 0:
+            outputfile.write("\n")
+            outputfile.write("# fnsysctl ps not found or empty")         
+            outputfile.write("\n")
+
+    except Exception as e:
+        outputfile.write("\n")   
+        outputfile.write("#fnsysctl ps failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")              
+
+
+    #fnsysctl proc/PID/smaps
+    try:
+        
+        if len(proc_smaps)>0:
+            end_of_block = cmd_used_at.index(proc_smaps[0])
+
+            if end_of_block == len(cmd_used_at)-1:                        
+                smaps_list = smaps_rollup(proc_smaps,lines,i,outputfile,ps_process_list, cmd_used_at)
+            else:
+                smaps_list = smaps_rollup(proc_smaps,lines,cmd_used_at[end_of_block+1], outputfile,ps_process_list, cmd_used_at)        
+    
+        if len(wad_table) == 0:
+            outputfile.write("\n")
+            outputfile.write("# fnsysctl cat proc not found or empty")         
+            outputfile.write("\n")
+
+    except Exception as e:
+        outputfile.write("\n")   
+        outputfile.write("#fnsysctl cat proc failed because:") 
+        outputfile.write("\n") 
+        outputfile.write(str(e)) 
+        outputfile.write("\n") 
+        outputfile.write(traceback.format_exc())         
+        outputfile.write("\n") 
+        outputfile.write("\n") 
+        outputfile.write("contact author with the log file") 
+        outputfile.write("\n") 
+        outputfile.write("\n")      
+
+
     
     outputfile.close()
    
@@ -3152,7 +3373,7 @@ def find_blocks(filename):
 
 #    find_blocks(sys.argv[1])
 
-find_blocks("LOOP.txt")
+find_blocks("FW-BALVE-ALCAR.log")
 
 
 
